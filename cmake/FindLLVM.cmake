@@ -119,8 +119,12 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE
 )
 
-
-set(LLVM_SYSTEM  z pthread tinfo)
+# set(LLVM_SYSTEM pthread z tinfo)
+execute_process(
+  COMMAND ${LLVM_CONFIG_EXECUTABLE} --system-libs
+  OUTPUT_VARIABLE LLVM_SYSTEM
+  OUTPUT_STRIP_TRAILING_WHITESPACE
+)
 
 if (NOT LLVM_FIND_QUIETLY)
   if (LLVM_VERSION)

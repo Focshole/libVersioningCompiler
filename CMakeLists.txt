@@ -172,7 +172,7 @@ set (VC_LIB_HDR ${VC_LIB_HDR1} ${VC_LIB_HDR2} ${VC_LIB_HDR3} )
 include_directories( ${CMAKE_CURRENT_SOURCE_DIR}/include )
 
 add_library( ${VC_LIB_NAME} STATIC ${VC_LIB_SRC} ${VC_LIB_HDR} )
-target_link_libraries( ${VC_LIB_NAME} ${VC_LIB_DEPS} z pthread tinfo)
+target_link_libraries( ${VC_LIB_NAME} ${VC_LIB_DEPS} )
 
 ###############################################
 ##               CONFIGURE                   ##
