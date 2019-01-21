@@ -59,11 +59,24 @@ find_file (CLANG_LIB_COMPILER_INCLUDE_PATH
            NO_DEFAULT_PATH
           )
 
+# Check for JITCompiler implementation is installed
+find_file (LIBVC_JIT_COMPILER_INCLUDE_PATH
+           versioningCompiler/CompilerImpl/JITCompiler.hpp
+           PATHS ${LIBVC_INCLUDES}
+           NO_DEFAULT_PATH
+          )
+
 if (CLANG_LIB_COMPILER_INCLUDE_PATH-NOTFOUND)
   set (HAVE_CLANG_LIB_COMPILER FALSE)
 else (CLANG_LIB_COMPILER_INCLUDE_PATH-NOTFOUND)
   set (HAVE_CLANG_LIB_COMPILER TRUE)
 endif (CLANG_LIB_COMPILER_INCLUDE_PATH-NOTFOUND)
+
+if (LIBVC_JIT_COMPILER_INCLUDE_PATH-NOTFOUND)
+  set (HAVE_LIBVC_JIT FALSE)
+else (LIBVC_JIT_COMPILER_INCLUDE_PATH-NOTFOUND)
+  set (HAVE_LIBVC_JIT TRUE)
+endif (LIBVC_JIT_COMPILER_INCLUDE_PATH-NOTFOUND)
 
 ## -----------------------------------------------------------------------------
 ## Check for DEPENDENCIES headers
@@ -563,6 +576,7 @@ mark_as_advanced (
     LIBVC_LIBRARIES
     LIVC_LIB_DIR
     HAVE_CLANG_LIB_COMPILER
+    HAVE_LIBVC_JIT
     LibVersioningCompiler_FOUND
     LibVersioningCompiler_INCLUDE_DIRS
     LibVersioningCompiler_INCLUDES
