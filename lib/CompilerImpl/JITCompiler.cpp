@@ -607,9 +607,10 @@ llvm::JITSymbol JITCompiler::findSymbol(const std::string Name, const std::strin
 //  }
 //  return symbols;
 
-std::vector<void*> JITCompiler::loadSymbols(std::string &bin,
-                               const std::vector<std::string> &func,
-                               void ** handler) {
+std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
+                                            const std::vector<std::string> &func,
+                                            void ** handler)
+{
 
   std::vector<void *> symbols = {};
 

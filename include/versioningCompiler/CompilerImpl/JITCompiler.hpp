@@ -123,7 +123,7 @@ namespace vc {
         void releaseSymbol(void **handler)
         override;
 
-        std::vector<void*> loadSymbols(std::string &bin,
+        std::vector<void*> loadSymbols(const std::string &bin,
                                        const std::vector<std::string> &func,
                                        void ** handler) override;
 
