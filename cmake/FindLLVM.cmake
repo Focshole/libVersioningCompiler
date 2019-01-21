@@ -82,6 +82,7 @@ if (LLVM_CONFIG_EXECUTABLE)
 else (LLVM_CONFIG_EXECUTABLE)
   message (STATUS "Unable to find llvm-config executable")
   message (WARNING "Could NOT find LLVM config executable")
+  set (HAVE_LLVM false)
 endif (LLVM_CONFIG_EXECUTABLE)
 
 execute_process(
