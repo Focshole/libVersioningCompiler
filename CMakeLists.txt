@@ -1,4 +1,4 @@
-# Copyright 2017 Politecnico di Milano.
+# Copyright 2017-2019 Politecnico di Milano.
 # Developed by : Stefano Cherubin, Davide Gadioli
 #                PhD student, Politecnico di Milano
 #                <first_name>.<family_name>@polimi.it

@@ -1,4 +1,4 @@
-/* Copyright 2017-2018 Politecnico di Milano.
+/* Copyright 2017-2019 Politecnico di Milano.
  * Developed by : Stefano Cherubin
  *                PhD student, Politecnico di Milano
  *                <first_name>.<family_name>@polimi.it
