@@ -61,25 +61,50 @@ if (HAVE_LLVM)
 endif (HAVE_LLVM)
 
 set (LLVM_VERSION_MIN_REQUIRED "6.0.0")
+set (LLVM_VERSION_MAX_JIT_SUPPORT "6.0.1")
 
-if ( HAVE_LLVM AND
-     (NOT ( LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED )) AND
-     HAVE_LIBCLANG )
-  set ( ENABLE_CLANG_AS_LIB true )
-else()
-  if (NOT HAVE_LLVM)
-    message( WARNING "LLVM not detected" )
-  else(NOT HAVE_LLVM)
-    if (LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
-      message( WARNING "You are using an obsolete version of LLVM:\
-\n\t${LLVM_VERSION} detected.\t\
-Minimum required is ${LLVM_VERSION_MIN_REQUIRED}" )
-    else(LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
+# default disable - enable after checking
+set ( ENABLE_CLANG_AS_LIB false )
+set ( ENABLE_JIT false )
+
+if (HAVE_LLVM)
+  # check LLVM version
+  if(LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
+    message( WARNING "You are using an obsolete version of LLVM: \n\t${LLVM_VERSION} detected.\t Minimum required is ${LLVM_VERSION_MIN_REQUIRED}" )
+  else(LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
+
+    # check for CLANG AS A LIBRARY
+    if(HAVE_LIBCLANG)
+      set ( ENABLE_CLANG_AS_LIB true )
+    else(HAVE_LIBCLANG)
       message( WARNING "LibClang not detected" )
-    endif (LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
-  endif (NOT HAVE_LLVM)
-  message( WARNING "Clang-as-a-library will be disabled" )
-endif()
+    endif(HAVE_LIBCLANG)
+
+    # check for JIT COMPILER
+    if(LLVM_VERSION VERSION_GREATER LLVM_VERSION_MAX_JIT_SUPPORT)
+      message( WARNING "You are using a recent version of LLVM: \n\t${LLVM_VERSION} detected.\t JIT compiler supports up to ${LLVM_VERSION_MAX_JIT_SUPPORT}" )
+    else(LLVM_VERSION VERSION_GREATER LLVM_VERSION_MAX_JIT_SUPPORT)
+      set (ENABLE_JIT true)
+    endif(LLVM_VERSION VERSION_GREATER LLVM_VERSION_MAX_JIT_SUPPORT)
+
+  endif(LLVM_VERSION VERSION_LESS LLVM_VERSION_MIN_REQUIRED)
+
+else (HAVE_LLVM)
+  message( WARNING "LLVM not detected" )
+endif (HAVE_LLVM)
+
+if(ENABLE_CLANG_AS_LIB)
+  message( STATUS "Clang as a Library:    feature ENABLED" )
+else(ENABLE_CLANG_AS_LIB)
+  message( STATUS "Clang as a Library:    feature DISABLED" )
+endif(ENABLE_CLANG_AS_LIB)
+
+if(ENABLE_JIT)
+  message( STATUS "Just-in-Time Compiler: feature ENABLED" )
+else(ENABLE_JIT)
+  message( STATUS "Just-in-Time Compiler: feature DISABLED" )
+endif(ENABLE_JIT)
+
 
 set (VC_LIB_DEPS ${DL_LIBRARY}
                  ${UUID_LIBRARY}
@@ -130,7 +155,6 @@ set ( VC_LIB_HDR1
                 ${VC_LIB_HDR_PREFIX}/Compiler.hpp
                 ${VC_LIB_HDR_PREFIX}/Utils.hpp
                 ${VC_LIB_HDR_PREFIX}/DebugUtils.hpp
-                ${VC_LIB_HDR_PREFIX}/JITUtils.hpp
                 )
 
 set ( VC_LIB_HDR_PREFIX2 ${CMAKE_CURRENT_SOURCE_DIR}/include/versioningCompiler/CompilerImpl )
@@ -154,7 +178,6 @@ if (ENABLE_CLANG_AS_LIB)
                   )
 
   set ( VC_LIB_HDR2 ${VC_LIB_HDR2}
-                    ${VC_LIB_HDR_PREFIX2}/JITCompiler.hpp
                     ${VC_LIB_HDR_PREFIX2}/ClangLibCompiler.hpp
                     )
 
@@ -166,6 +189,22 @@ set ( VC_LIB_HDR3
                 ${VC_LIB_HDR_PREFIX3}/LLVMInstanceManager.hpp
                 )
 endif(ENABLE_CLANG_AS_LIB)
+
+#----- Additionl files to enable Just-in-Time compiler
+if (ENABLE_JIT)
+  set (VC_LIB_SRC ${VC_LIB_SRC}
+                  ${SRC_PREFIX}/CompilerImpl/JITCompiler.cpp
+                  )
+
+  set ( VC_LIB_HDR1 ${VC_LIB_HDR1}
+                    ${VC_LIB_HDR_PREFIX}/JITUtils.hpp
+                  )
+
+  set ( VC_LIB_HDR2 ${VC_LIB_HDR2}
+                    ${VC_LIB_HDR_PREFIX2}/JITCompiler.hpp
+                  )
+  set ( VC_LIB_DEPS ${VC_LIB_DEPS} z pthread tinfo)
+endif (ENABLE_JIT)
 
 set (VC_LIB_HDR ${VC_LIB_HDR1} ${VC_LIB_HDR2} ${VC_LIB_HDR3} )
 
