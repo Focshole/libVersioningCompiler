@@ -68,7 +68,8 @@ JITCompiler::JITCompiler(
         true // support IR
 ),
     _targetMachine(llvm::EngineBuilder().selectTarget()),
-    _dataLayout(targetMachine.createDataLayout()) {
+    _dataLayout(targetMachine.createDataLayout())
+{
   std::cout << "Constructing compiler object.." << std::endl;
   _llvmManager = LLVMInstanceManager::getInstance();
 
@@ -100,7 +101,8 @@ JITCompiler::JITCompiler(
 std::string JITCompiler::generateIR(const std::vector<std::string> &src,
                                     const std::vector<std::string> &func,
                                     const std::string &versionID,
-                                    const opt_list_t options) {
+                                    const opt_list_t options)
+{
   // What we want to generate
   const std::string &llvmIRfileName = Compiler::getBitcodeFileName(versionID);
   // what we return when generateIR fails
@@ -209,7 +211,8 @@ std::string JITCompiler::generateIR(const std::vector<std::string> &src,
  */
 std::string JITCompiler::runOptimizer(const std::string &src_IR,
                                       const std::string &versionID,
-                                      const opt_list_t options) const {
+                                      const opt_list_t options) const
+{
   // What we want to generate
   const std::string optBCfilename = Compiler::getOptBitcodeFileName(versionID);
 
@@ -336,7 +339,8 @@ std::string JITCompiler::runOptimizer(const std::string &src_IR,
 
   // Add internal analysis passes from the target machine.
   Passes.add(llvm::createTargetTransformInfoWrapperPass(
-          (actualTM) ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
+          (actualTM) ? actualTM->getTargetIRAnalysis()
+          : llvm::TargetIRAnalysis()));
 
   std::unique_ptr<llvm::legacy::FunctionPassManager> FPasses;
   if (OptLevelO0 ||
@@ -531,10 +535,12 @@ std::string JITCompiler::runOptimizer(const std::string &src_IR,
 // ---------------------------------------------------------------------------
 /** addModule wrapper
  *
- * Makes the actual call to llvm CompileLayer addModule functions and saves the JIT compilation
- * results in the JITCompiler class state
+ * Makes the actual call to llvm CompileLayer addModule functions and saves the
+ * JIT compilation results in the JITCompiler class state
  */
-void JITCompiler::addModule(std::shared_ptr<llvm::Module> M, const std::string &versionID) {
+void JITCompiler::addModule(std::shared_ptr<llvm::Module> M,
+                            const std::string &versionID)
+{
   auto cm_iterator = _comp_map.find(versionID);
 
   if (cm_iterator == _comp_map.end()) {
@@ -556,14 +562,18 @@ void JITCompiler::addModule(std::shared_ptr<llvm::Module> M, const std::string &
               return llvm::JITSymbol(nullptr);
           });
 
-  _handles_map[versionID] = llvm::cantFail(_comp_map[versionID]->addModule(std::move(M), std::move(Resolver)));
+  _handles_map[versionID] =
+    llvm::cantFail(_comp_map[versionID]->addModule(std::move(M),
+                                                   std::move(Resolver)));
   return;
 }
 
 // ---------------------------------------------------------------------------
 // ------------------------------- findSymbol --------------------------------
 // ---------------------------------------------------------------------------
-llvm::JITSymbol JITCompiler::findSymbol(const std::string Name, const std::string &versionID) {
+llvm::JITSymbol JITCompiler::findSymbol(const std::string Name,
+                                        const std::string &versionID)
+{
   std::string MangledName;
   llvm::raw_string_ostream MangledNameStream(MangledName);
   llvm::Mangler::getNameWithPrefix(MangledNameStream, Name, _dataLayout);
@@ -574,39 +584,6 @@ llvm::JITSymbol JITCompiler::findSymbol(const std::string Name, const std::strin
 // ---------------------------------------------------------------------------
 // ------------------------------- loadSymbol --------------------------------
 // ---------------------------------------------------------------------------
-/** Symbol Loading
- *
- * This implementation looks for the version saved module and adds it to the llvm
- * CompileLayer. It later resolves the symbol and returns it to its caller. This is
- * the function which actually performs the JIT compilation
- */
-
-
-//  if (exists(bin)) {
-//    *handler = dlopen(bin.c_str(), RTLD_NOW);
-//  } else {
-//    std::string error_str = "cannot load symbol from " + bin +
-//                            " : file not found";
-//    log_string(error_str);
-//    return symbols;
-//  }
-//  if (*handler) {
-//    for (const std::string& f : func) {
-//      void *symbol = dlsym(*handler, f.c_str());
-//      if (!symbol) {
-//        std::string error_str = "cannot load symbol " + f + " from " + bin +
-//        " : symbol not found";
-//        log_string(error_str);
-//      }
-//      symbols.push_back(symbol);
-//    } // end for
-//  } else {
-//    char* error = dlerror();
-//    std::string error_str(error);
-//    log_string(error_str);
-//  }
-//  return symbols;
-
 std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
                                             const std::vector<std::string> &func,
                                             void ** handler)
@@ -615,12 +592,13 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
   std::vector<void *> symbols = {};
 
   // In JITCompiter implementation bin is used as a reference to our version ID
-  std::string versionID = bin;
+  const std::string versionID = bin;
 
   auto mm_iterator = _modules_map.find(versionID);
   if (mm_iterator == _modules_map.end()) {
     std::string error_string = "JITCompiler::loadSymbol ";
-    error_string = error_string + "cannot load symbol from " + versionID + " - module not found";
+    error_string = error_string + "cannot load symbol from " + versionID
+                                + " - module not found";
     Compiler::log_string(error_string);
     return symbols;
   }
@@ -634,7 +612,8 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
   auto hm_iterator = _handles_map.find(versionID);
   if (hm_iterator == _handles_map.end()) {
     std::string error_string = "JITCompiler::loadSymbol ";
-    error_string = error_string + "cannot load symbol from " + versionID + " - addModule call failed";
+    error_string = error_string + "cannot load symbol from " + versionID
+                                + " - addModule call failed";
     Compiler::log_string(error_string);
     return symbols;
   }
@@ -642,7 +621,8 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
   _isloaded_map[versionID] = true;
 
       for (const std::string& f : func) {
-      void *symbol = (void *) llvm::cantFail(findSymbol(f, versionID).getAddress());
+      void *symbol = (void *) llvm::cantFail(
+                                    findSymbol(f, versionID).getAddress());
       if (!symbol) {
         std::string error_str = "cannot load symbol " + f + " from " + bin +
         " : symbol not found";
@@ -664,7 +644,8 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
  * class state consistent cleaning the loaded symbols and removing the llvm Module
  * from the specific CompileLayer
  */
-void JITCompiler::releaseSymbol(void **handler) {
+void JITCompiler::releaseSymbol(void **handler)
+{
 
   std::string *id = static_cast<std::string *>(*handler);
 
@@ -696,7 +677,8 @@ void JITCompiler::releaseSymbol(void **handler) {
 std::string JITCompiler::generateBin(const std::vector<std::string> &src,
                                      const std::vector<std::string> &func,
                                      const std::string &versionID,
-                                     const opt_list_t options) {
+                                     const opt_list_t options)
+{
 
   // The source IR file name to JIT compile
   std::string source = src[0]; // if contains IR then it's just one element, otherwise will generate it
@@ -715,14 +697,11 @@ std::string JITCompiler::generateBin(const std::vector<std::string> &src,
   // If IR files were not generated, generate it now but don't optimize it
   if (!exists(llvmOPTIRfileName) && !exists(llvmIRfileName)) {
     Compiler::log_string("IR file not found, generating from source..");
-
     source = generateIR(src, func, versionID, options);
   }
 
-
   // What we return when generateIR fails
   const std::string failureName = "";
-
 
   auto report_error = [&](const std::string message) {
       std::string error_string = "JITCompiler::generateBin";
@@ -737,7 +716,8 @@ std::string JITCompiler::generateBin(const std::vector<std::string> &src,
   llvm::SMDiagnostic parsing_input_error_code;
   Compiler::log_string("Jitting IR file: " + source);
 
-  _modules_map[versionID] = move(llvm::parseIRFile(source, parsing_input_error_code, _opt_context));
+  _modules_map[versionID] = move(
+    llvm::parseIRFile(source, parsing_input_error_code, _opt_context));
   std::shared_ptr<llvm::Module> m = _modules_map[versionID];
   if (!m) {
     report_error("Module was not generated");
@@ -750,14 +730,16 @@ std::string JITCompiler::generateBin(const std::vector<std::string> &src,
 // ---------------------------------------------------------------------------
 // ------------------------------ hasOptimizer -------------------------------
 // ---------------------------------------------------------------------------
-bool JITCompiler::hasOptimizer() const {
+bool JITCompiler::hasOptimizer() const
+{
   return true;
 }
 
 // ---------------------------------------------------------------------------
 // ----------------------------- getOptionString -----------------------------
 // ---------------------------------------------------------------------------
-inline std::string JITCompiler::getOptionString(const Option &o) const {
+inline std::string JITCompiler::getOptionString(const Option &o) const
+{
   // remove single and double quotes
   std::string tmp_val = o.getValue();
   if (tmp_val.length() > 1 &&
@@ -771,7 +753,8 @@ inline std::string JITCompiler::getOptionString(const Option &o) const {
 // --------------------------------- getArgV ---------------------------------
 // ---------------------------------------------------------------------------
 inline std::vector<std::string> JITCompiler::getArgV(
-        const opt_list_t optionList) const {
+                                            const opt_list_t optionList) const
+{
   std::vector<std::string> v;
   v.reserve(optionList.size());
   for (const auto &o : optionList) {
