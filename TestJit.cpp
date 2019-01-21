@@ -3,10 +3,10 @@
  *                PhD student, Politecnico di Milano
  *                <first_name>.<family_name>@polimi.it
  *                Marco Festa
- *                Ms student, Politecnico di Milano
+ *                MSc student, Politecnico di Milano
  *                <first_name>2.<family_name>@mail.polimi.it
  *                Nicole Gervasoni
- *                Ms student, Politecnico di Milano
+ *                MSc student, Politecnico di Milano
  *                <first_name>annamaria.<family_name>@mail.polimi.it
  *
  * This file is part of libVersioningCompiler
