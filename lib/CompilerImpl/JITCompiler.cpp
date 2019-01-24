@@ -109,7 +109,7 @@ std::string JITCompiler::generateIR(const std::vector<std::string> &src,
   const std::string &failureFileName = "";
   std::string log_str = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
       std::string error_string = "JITCompiler::generateIR";
       error_string = error_string + " ERROR during processing of version ";
       error_string = error_string + versionID;
@@ -219,7 +219,7 @@ std::string JITCompiler::runOptimizer(const std::string &src_IR,
   // what we return when generateIR fails
   const std::string failureFileName = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
       std::string error_string = "JITCompiler::runOptimizer";
       error_string = error_string + " ERROR during processing of version ";
       error_string = error_string + versionID;
@@ -705,7 +705,7 @@ std::string JITCompiler::generateBin(const std::vector<std::string> &src,
   // What we return when generateIR fails
   const std::string failureName = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
       std::string error_string = "JITCompiler::generateBin";
       error_string = error_string + " ERROR during processing of version ";
       error_string = error_string + versionID;
@@ -718,7 +718,7 @@ std::string JITCompiler::generateBin(const std::vector<std::string> &src,
   llvm::SMDiagnostic parsing_input_error_code;
   Compiler::log_string("Jitting IR file: " + source);
 
-  _modules_map[versionID] = move(
+  _modules_map[versionID] = std::move(
     llvm::parseIRFile(source, parsing_input_error_code, _opt_context));
   std::shared_ptr<llvm::Module> m = _modules_map[versionID];
   if (!m) {

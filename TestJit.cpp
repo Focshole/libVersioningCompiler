@@ -112,7 +112,7 @@ int main(int argc, char const *argv[]) {
 
 
   builder._compiler = jitCompiler;
-  builder._autoremoveFilesEnable = false;
+  builder._autoremoveFilesEnable = true;
   builder._optOptionList = {
           vc::Option("mem2reg", "-mem2reg"),
           vc::Option("o", "-O", "3"),
