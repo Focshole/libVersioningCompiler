@@ -100,7 +100,7 @@ std::string ClangLibCompiler::generateIR(const std::vector<std::string> &src,
   const std::string &failureFileName = "";
   std::string log_str = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
     std::string error_string = "ClangLibCompiler::generateIR";
     error_string = error_string + " ERROR during processing of version ";
     error_string = error_string + versionID;
@@ -210,7 +210,7 @@ std::string ClangLibCompiler::runOptimizer(const std::string &src_IR,
   // what we return when generateIR fails
   const std::string failureFileName = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
     std::string error_string = "ClangLibCompiler::runOptimizer";
     error_string = error_string + " ERROR during processing of version ";
     error_string = error_string + versionID;
@@ -541,7 +541,7 @@ std::string ClangLibCompiler::generateBin(const std::vector<std::string> &src,
   const std::string failureFileName = "";
   std::string log_str = "";
 
-  auto report_error = [&](const std::string message) {
+  auto report_error = [&](const std::string &message) {
     std::string error_string = "ClangLibCompiler::generateBin";
     error_string = error_string + " ERROR during processing of version ";
     error_string = error_string + versionID;
