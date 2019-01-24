@@ -571,7 +571,7 @@ void JITCompiler::addModule(std::shared_ptr<llvm::Module> M,
 // ---------------------------------------------------------------------------
 // ------------------------------- findSymbol --------------------------------
 // ---------------------------------------------------------------------------
-llvm::JITSymbol JITCompiler::findSymbol(const std::string Name,
+llvm::JITSymbol JITCompiler::findSymbol(const std::string &Name,
                                         const std::string &versionID)
 {
   std::string MangledName;

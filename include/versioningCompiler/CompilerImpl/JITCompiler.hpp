@@ -133,7 +133,7 @@ namespace vc {
         // JIT specific methods
         void addModule(std::shared_ptr<llvm::Module> M, const std::string &versionID);
 
-        llvm::JITSymbol findSymbol(const std::string Name, const std::string &versionID);
+        llvm::JITSymbol findSymbol(const std::string &Name, const std::string &versionID);
 
 
     private:
