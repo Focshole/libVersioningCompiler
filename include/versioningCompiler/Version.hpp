@@ -55,7 +55,7 @@ class Version
   class Builder;
 
   /** \brief String representation of the Version unique identifier. */
-  std::string getID() const;
+  const std::string getID() const;
 
   /** \brief User defined string description of the Version. */
   std::vector<std::string> getTags() const;
@@ -106,7 +106,7 @@ class Version
    * object is still alive.
    * Closing the associated binary shared object will invalide these pointers.
    */
-  std::vector<void *> getSymbols() const;
+  const std::vector<void *> getSymbols() const;
 
   /** \brief Return symbol corresponding to functionName, if was correctly loaded.
    * nullptr otherwise.
@@ -159,34 +159,34 @@ class Version
   const opt_list_t getOptOptionList() const;
 
   /** \brief Compiler used to compile this Version. */
-  std::string getCompilerId() const;
+  const std::string getCompilerId() const;
 
   /** \brief name of the versioned function. */
-  std::string getFunctionName() const;
+  const std::string getFunctionName() const;
 
   /** \brief name of the versioned function at index. */
-  std::string getFunctionName(int index) const;
+  const std::string getFunctionName(const int index) const;
 
   /** \brief names of the versioned functions. */
-  std::vector<std::string> getFunctionNames() const;
+  const std::vector<std::string> getFunctionNames() const;
 
   /** \brief file name where the source code, if available, is stored. */
-  std::string getFileName_src() const;
+  const std::string getFileName_src() const;
 
   /** \brief file name where the source code, if available, is stored. */
-  std::string getFileName_src(const int index) const;
+  const std::string getFileName_src(const int index) const;
 
   /** \brief file name where the source code, if available, is stored. */
-  std::vector<std::string> getFileNames_src() const;
+  const  std::vector<std::string> getFileNames_src() const;
 
   /** \brief file name where the IR, if available, is stored. */
-  std::string getFileName_IR() const;
+  const std::string getFileName_IR() const;
 
   /** \brief file name where the optimized IR, if available, is stored. */
-  std::string getFileName_IR_opt() const;
+  const std::string getFileName_IR_opt() const;
 
   /** \brief file name where the binary, if available, is stored. */
-  std::string getFileName_bin() const;
+  const std::string getFileName_bin() const;
 
   inline bool operator== (const Version& other) {
     return getID() == other.getID();
@@ -353,7 +353,7 @@ class Version::Builder
    */
   template<typename value_t>
   void addDefine(const std::string &defineName, const value_t& defineValue) {
-    std::string flag = defineName + "=" + std::to_string(defineValue);
+    const std::string flag = defineName + "=" + std::to_string(defineValue);
     return addFunctionFlag(flag);
   }
 
@@ -361,7 +361,7 @@ class Version::Builder
    * compilation of the given functions.
    */
   void addDefine(const std::string &defineName, const char* defineValue) {
-    std::string flag = defineName + "=" + std::string(defineValue);
+    const std::string flag = defineName + "=" + std::string(defineValue);
     return addFunctionFlag(flag);
   }
 

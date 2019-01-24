@@ -63,7 +63,7 @@ Version::~Version()
 // ----------------------------------------------------------------------------
 // ---------------------------------- get ID ----------------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getID() const
+const std::string Version::getID() const
 {
   return id;
 }
@@ -163,7 +163,7 @@ void *Version::getSymbol(const int index) const
 // ----------------------------------------------------------------------------
 // --------------------------- get function pointer ---------------------------
 // ----------------------------------------------------------------------------
-std::vector<void *> Version::getSymbols() const
+const std::vector<void *> Version::getSymbols() const
 {
   return symbol;
 }
@@ -252,7 +252,7 @@ const opt_list_t Version::getOptOptionList() const
 // ----------------------------------------------------------------------------
 // ----------------------------- get compiler ID ------------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getCompilerId() const
+const std::string Version::getCompilerId() const
 {
   return compiler->getId();
 }
@@ -260,7 +260,7 @@ std::string Version::getCompilerId() const
 // ----------------------------------------------------------------------------
 // --------------------------- get function name ------------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFunctionName() const
+const std::string Version::getFunctionName() const
 {
   return functionName.at(0);
 }
@@ -268,7 +268,7 @@ std::string Version::getFunctionName() const
 // ----------------------------------------------------------------------------
 // --------------------------- get function name ------------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFunctionName(const int index) const
+const std::string Version::getFunctionName(const int index) const
 {
   return functionName.at(index);
 }
@@ -276,7 +276,7 @@ std::string Version::getFunctionName(const int index) const
 // ----------------------------------------------------------------------------
 // --------------------------- get function name ------------------------------
 // ----------------------------------------------------------------------------
-std::vector<std::string> Version::getFunctionNames() const
+const std::vector<std::string> Version::getFunctionNames() const
 {
   return functionName;
 }
@@ -284,7 +284,7 @@ std::vector<std::string> Version::getFunctionNames() const
 // ----------------------------------------------------------------------------
 // --------------------------- get source filename ----------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFileName_src() const
+const std::string Version::getFileName_src() const
 {
   return fileName_src.at(0);
 }
@@ -292,7 +292,7 @@ std::string Version::getFileName_src() const
 // ----------------------------------------------------------------------------
 // --------------------------- get source filename ----------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFileName_src(const int index) const
+const std::string Version::getFileName_src(const int index) const
 {
   return fileName_src.at(index);
 }
@@ -300,7 +300,7 @@ std::string Version::getFileName_src(const int index) const
 // ----------------------------------------------------------------------------
 // --------------------------- get source filename ----------------------------
 // ----------------------------------------------------------------------------
-std::vector<std::string> Version::getFileNames_src() const
+const std::vector<std::string> Version::getFileNames_src() const
 {
   return fileName_src;
 }
@@ -308,7 +308,7 @@ std::vector<std::string> Version::getFileNames_src() const
 // ----------------------------------------------------------------------------
 // ------------------------ get intermediate filename -------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFileName_IR() const
+const std::string Version::getFileName_IR() const
 {
   return fileName_IR;
 }
@@ -316,7 +316,7 @@ std::string Version::getFileName_IR() const
 // ----------------------------------------------------------------------------
 // ------------------------- get optimized filename ---------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFileName_IR_opt() const
+const std::string Version::getFileName_IR_opt() const
 {
   return fileName_IR_opt;
 }
@@ -324,7 +324,7 @@ std::string Version::getFileName_IR_opt() const
 // ----------------------------------------------------------------------------
 // --------------------------- get binary filename ----------------------------
 // ----------------------------------------------------------------------------
-std::string Version::getFileName_bin() const
+const std::string Version::getFileName_bin() const
 {
   return fileName_bin;
 }
