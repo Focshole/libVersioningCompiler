@@ -603,7 +603,9 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
     return symbols;
   }
 
-  *handler = &bin;
+  // *handler = &bin;
+  std::string* sym_id = new std::string(bin);
+  *handler = (void *)sym_id;
   std::shared_ptr<llvm::Module> m = _modules_map[versionID];
 
   // Calling a wrapper to the actual llvm addModule method
@@ -646,7 +648,6 @@ std::vector<void*> JITCompiler::loadSymbols(const std::string &bin,
  */
 void JITCompiler::releaseSymbol(void **handler)
 {
-
   std::string *id = static_cast<std::string *>(*handler);
 
   auto map_rows_iterator = _isloaded_map.find(*id);
@@ -661,6 +662,7 @@ void JITCompiler::releaseSymbol(void **handler)
     _isloaded_map.erase(*id);
   }
 
+  free(*handler);
   *handler = nullptr;
   return;
 }
