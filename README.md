@@ -1,3 +1,4 @@
+[![Build Status](https://app.travis-ci.com/skeru/libVersioningCompiler.svg?branch=master)](https://app.travis-ci.com/skeru/libVersioningCompiler)
 # libVersioningCompiler
 
 This library enables runtime compilation of source code and dynamic loading of
@@ -43,14 +44,12 @@ clone the repository to `${LIBVC_ROOT}`
 
 ```
 cd ${LIBVC_ROOT}
-mkdir build
-cd build
-cmake .. [-DCMAKE_INSTALL_PREFIX="/path/to/your/custom/install/folder/"]
-make
+cmake -S . -Bbuild [-DCMAKE_INSTALL_PREFIX="/path/to/your/custom/install/folder/"] [-G "make/Ninja/whatever generator"]
+cmake --build build
 ./libVC_testUtils
 ./libVC_test
 ./libVC_testJit 
-[sudo] make install
+[sudo] cmake --build build --target install
 ```
 
 Please note that if you choose to install libVersioningCompiler in a custom
@@ -60,7 +59,7 @@ You will find a pre-cooked cmake module in `${LIBVC_ROOT}/config`.
 The above-mentioned cmake module will export also cmake variables which are
 useful to build an application that uses libVersioningCompiler, including
 ```
-$LIBVC_INCLUDES   = Include path for the header files of libVersioningCompiler
+$LIBVC_INCLUDE_DIRS   = Include path for the header files of libVersioningCompiler
 $LIBVC_LIBRARIES  = Link these libraries to use libVersioningCompiler
 $LIVC_LIB_DIR     = Extra libraries directories
 $HAVE_CLANG_LIB_COMPILER = Set to true if libVersioningCompiler can have
