@@ -317,7 +317,7 @@ find_library(
   DOC "The file that corresponds to the libclang library.")
 
 get_filename_component(LIBCLANG_LIBRARY_DIR ${LIBCLANG_LIBRARY} PATH)
-
+list(APPEND CMAKE_FIND_LIBRARY_SUFFIXES ".so.${LLVM_VERSION_MAJOR}")
 macro(FIND_AND_ADD_CLANG_LIB _libname_)
   find_library(
     CLANG_${_libname_}_LIB
@@ -333,19 +333,8 @@ macro(FIND_AND_ADD_CLANG_LIB _libname_)
 endmacro(FIND_AND_ADD_CLANG_LIB)
 
 set(LIBCLANG_LIBRARIES ${LIBCLANG_LIBRARY})
-# Clang shared library provides just the limited C interface, so it
-# can not be used.  We look for the static libraries.
-find_and_add_clang_lib(clangFrontend)
-find_and_add_clang_lib(clangSerialization)
-find_and_add_clang_lib(clangDriver)
-find_and_add_clang_lib(clangCodeGen)
-find_and_add_clang_lib(clangParse)
-find_and_add_clang_lib(clangSema)
-find_and_add_clang_lib(clangAnalysis)
-find_and_add_clang_lib(clangAST)
-find_and_add_clang_lib(clangEdit)
-find_and_add_clang_lib(clangLex)
-find_and_add_clang_lib(clangBasic)
+find_and_add_clang_lib(clang-cpp)
+list(REMOVE_ITEM CMAKE_FIND_LIBRARY_SUFFIXES ".so.${LLVM_VERSION_MAJOR}")
 
 list(REMOVE_DUPLICATES LIBCLANG_LIBRARY_DIR)
 
