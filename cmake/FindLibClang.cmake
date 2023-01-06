@@ -112,7 +112,9 @@ if(is_there_clang-cpp)
   find_and_add_clang_lib(clang-cpp)
   list(REMOVE_DUPLICATES LIBCLANG_LIBRARY_DIR)
 else()
-  message(WARNING "Cannot find library libclang! Attempting to find the single libraries!")
+  message(
+    WARNING
+      "Cannot find library libclang! Attempting to find the single libraries!")
   find_and_add_clang_lib(clang-cpp)
   find_and_add_clang_lib(clang NAMES clang libclang)
   # Clang shared library provides just the limited C interface, so it
