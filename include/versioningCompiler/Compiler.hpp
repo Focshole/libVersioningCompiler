@@ -126,7 +126,9 @@ public:
   virtual std::string getOptionString(const Option &o) const = 0;
 
 protected:
-  /** \brief string used to call the compiler. WARNING: If it starts with / (on linux), it will ignore the installDirectory prefix!*/
+  /** \brief string used to call the compiler. WARNING: If it starts with / (on
+   * linux), it will ignore the installDirectory prefix! See
+   * https://en.cppreference.com/w/cpp/filesystem/path/append */
   std::filesystem::path callString;
 
   /** \brief directory where the compiler is installed. */

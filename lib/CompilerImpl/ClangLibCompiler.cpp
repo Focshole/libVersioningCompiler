@@ -48,9 +48,9 @@ std::mutex ClangLibCompiler::opt_parse_mtx;
 // ----------------------- zero-parameters constructor ------------------------
 // ----------------------------------------------------------------------------
 ClangLibCompiler::ClangLibCompiler()
-    : ClangLibCompiler("ClangLibCompiler", // compilerID
-                       ".",                // libWorkingDir
-                       ""                  // no log file
+    : ClangLibCompiler("ClangLibCompiler",           // compilerID
+                       std::filesystem::u8path("."), // libWorkingDir
+                       std::filesystem::u8path("")   // no log file
       ) {}
 
 // ----------------------------------------------------------------------------
@@ -60,11 +60,11 @@ ClangLibCompiler::ClangLibCompiler(const std::string &compilerID,
                                    const std::filesystem::path &libWorkingDir,
                                    const std::filesystem::path &log)
     : Compiler(compilerID,
-               "#", // compiler call string
+               std::filesystem::u8path("#"), // compiler call string
                libWorkingDir,
-               log, // log filename
-               "~", // install directory
-               true // support IR
+               log,                          // log filename
+               std::filesystem::u8path("~"), // install directory
+               true                          // support IR
       ) {
   // initialize LLVM stuff and shutdown everything at program tear down
   _llvmManager = LLVMInstanceManager::getInstance();

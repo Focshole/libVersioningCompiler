@@ -65,7 +65,8 @@ compiler_ptr_t vc_utils_init() {
   // ---------- Compiler initialization ---------
   std::cout << "Setting up compiler.." << std::endl;
   _libVC_jit_compiler = vc::make_compiler<vc::JITCompiler>(
-      "jitCompiler", ".", "./test_jit.log", *_targetMachine);
+      "jitCompiler", std::filesystem::u8path("."),
+      std::filesystem::u8path("./test_jit.log"), *_targetMachine);
 }
 
 version_ptr_t createVersion(const std::filesystem::path &src,

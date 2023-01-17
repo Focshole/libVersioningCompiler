@@ -101,8 +101,11 @@ TAFFOCompiler::TAFFOCompiler(
 }
 
 TAFFOCompiler::TAFFOCompiler()
-    : TAFFOCompiler("taffo", "/usr/bin/opt", "/usr/bin/clang", "/usr/bin/clang",
-                    "", ".", "") {}
+    : TAFFOCompiler("taffo", std::filesystem::u8path("/usr/bin/opt"),
+                    std::filesystem::u8path("/usr/bin/clang"),
+                    std::filesystem::u8path("/usr/bin/clang"),
+                    std::filesystem::u8path(""), std::filesystem::u8path("."),
+                    std::filesystem::u8path("")) {}
 
 bool TAFFOCompiler::hasOptimizer() const { return false; }
 

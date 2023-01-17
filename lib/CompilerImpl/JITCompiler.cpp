@@ -63,11 +63,11 @@ JITCompiler::JITCompiler(const std::string &compilerID,
                          const std::filesystem::path &libWorkingDir,
                          const std::filesystem::path &log)
     : Compiler(compilerID,
-               "#", // compiler call string
+               std::filesystem::u8path("#"), // compiler call string
                libWorkingDir,
-               log, // log filename
-               "~", // install directory
-               true // support IR
+               log,                          // log filename
+               std::filesystem::u8path("~"), // install directory
+               true                          // support IR
                ),
       _ES(std::make_unique<llvm::orc::ExecutionSession>(
           std::move(*llvm::orc::SelfExecutorProcessControl::Create()))),
@@ -114,7 +114,7 @@ JITCompiler::generateIR(const std::vector<std::filesystem::path> &src,
   const std::filesystem::path &llvmIRfileName =
       Compiler::getBitcodeFileName(versionID);
   // what we return when generateIR fails
-  const std::filesystem::path &failureFileName = "";
+  const std::filesystem::path &failureFileName = std::filesystem::u8path("");
   std::string log_str = "";
 
   auto report_error = [&](const std::string message) {
