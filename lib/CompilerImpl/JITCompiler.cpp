@@ -27,6 +27,10 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with libVersioningCompiler. If not, see <http://www.gnu.org/licenses/>
  */
+#include "versioningCompiler/CompilerImpl/JITCompiler.hpp"
+#include "versioningCompiler/CompilerImpl/ClangLLVM/FileLogDiagnosticConsumer.hpp"
+#include "versioningCompiler/CompilerImpl/ClangLLVM/OptUtils.hpp" // opt stuff
+#include "versioningCompiler/DebugUtils.hpp"
 #include "clang/Basic/Diagnostic.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/CodeGen/CodeGenAction.h"
@@ -39,10 +43,6 @@
 #include "llvm/ExecutionEngine/SectionMemoryManager.h"
 #include "llvm/Pass.h"
 #include "llvm/Support/Error.h"
-#include "versioningCompiler/CompilerImpl/ClangLLVM/FileLogDiagnosticConsumer.hpp"
-#include "versioningCompiler/CompilerImpl/ClangLLVM/OptUtils.hpp" // opt stuff
-#include "versioningCompiler/CompilerImpl/JITCompiler.hpp"
-#include "versioningCompiler/DebugUtils.hpp"
 
 #ifndef OPT_EXE_NAME
 #define OPT_EXE_NAME "opt"
@@ -59,27 +59,27 @@ std::mutex JITCompiler::opt_parse_mtx;
 // ----------------------------------------------------------------------------
 // --------------------------- detailed constructor ---------------------------
 // ----------------------------------------------------------------------------
-JITCompiler::JITCompiler(
-        const std::string &compilerID,
-        const std::filesystem::path &libWorkingDir,
-        const std::filesystem::path &log
-) : Compiler(
-        compilerID,
-        "#", // compiler call string
-        libWorkingDir,
-        log, // log filename
-        "~", // install directory
-        true // support IR
-),
-    _ES(std::make_unique<llvm::orc::ExecutionSession>(std::move(*llvm::orc::SelfExecutorProcessControl::Create()))),
-    _JTMB(_ES->getExecutorProcessControl().getTargetTriple()),
-    _tsctx(std::make_unique<llvm::LLVMContext>()),
-    _mangle(*_ES, this->_dataLayout),
-    _dataLayout(*this->_JTMB.getDefaultDataLayoutForTarget()), _mainJD(_ES->createBareJITDylib("<main>")) {
-      this->_mainJD.addGenerator(
-        llvm::cantFail(llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
-            this->_dataLayout.getGlobalPrefix())));
-    
+JITCompiler::JITCompiler(const std::string &compilerID,
+                         const std::filesystem::path &libWorkingDir,
+                         const std::filesystem::path &log)
+    : Compiler(compilerID,
+               "#", // compiler call string
+               libWorkingDir,
+               log, // log filename
+               "~", // install directory
+               true // support IR
+               ),
+      _ES(std::make_unique<llvm::orc::ExecutionSession>(
+          std::move(*llvm::orc::SelfExecutorProcessControl::Create()))),
+      _JTMB(_ES->getExecutorProcessControl().getTargetTriple()),
+      _tsctx(std::make_unique<llvm::LLVMContext>()),
+      _mangle(*_ES, this->_dataLayout),
+      _dataLayout(*this->_JTMB.getDefaultDataLayoutForTarget()),
+      _mainJD(_ES->createBareJITDylib("<main>")) {
+  this->_mainJD.addGenerator(llvm::cantFail(
+      llvm::orc::DynamicLibrarySearchGenerator::GetForCurrentProcess(
+          this->_dataLayout.getGlobalPrefix())));
+
   std::cout << "Constructing compiler object.." << std::endl;
   _llvmManager = LLVMInstanceManager::getInstance();
 
@@ -87,12 +87,9 @@ JITCompiler::JITCompiler(
   _diagnosticOptions = new clang::DiagnosticOptions();
   _diagnosticIDs = new clang::DiagnosticIDs();
   _diagConsumer = std::make_shared<vc::FileLogDiagnosticConsumer>(
-          log,
-          _diagnosticOptions.get());
-  _diagEngine = new clang::DiagnosticsEngine(_diagnosticIDs,
-                                             _diagnosticOptions.get(),
-                                             _diagConsumer.get(),
-                                             false);
+      log, _diagnosticOptions.get());
+  _diagEngine = new clang::DiagnosticsEngine(
+      _diagnosticIDs, _diagnosticOptions.get(), _diagConsumer.get(), false);
 
   // initialize JIT objects
   llvm::sys::DynamicLibrary::LoadLibraryPermanently(nullptr);
@@ -108,31 +105,35 @@ JITCompiler::JITCompiler(
  * This implementation exploits the clang driver to handle all the stages of
  * the compilation process.
  */
-std::filesystem::path JITCompiler::generateIR(const std::vector<std::filesystem::path> &src,
-                                    const std::vector<std::string> &func,
-                                    const std::string &versionID,
-                                    const opt_list_t options) {
+std::filesystem::path
+JITCompiler::generateIR(const std::vector<std::filesystem::path> &src,
+                        const std::vector<std::string> &func,
+                        const std::string &versionID,
+                        const opt_list_t options) {
   // What we want to generate
-  const std::filesystem::path &llvmIRfileName = Compiler::getBitcodeFileName(versionID);
+  const std::filesystem::path &llvmIRfileName =
+      Compiler::getBitcodeFileName(versionID);
   // what we return when generateIR fails
   const std::filesystem::path &failureFileName = "";
   std::string log_str = "";
 
   auto report_error = [&](const std::string message) {
-      std::string error_string = "JITCompiler::generateIR";
-      error_string = error_string + " ERROR during processing of version ";
-      error_string = error_string + versionID;
-      error_string = error_string + "\n\t";
-      error_string = error_string + message;
-      Compiler::log_string(error_string);
-      return;
+    std::string error_string = "JITCompiler::generateIR";
+    error_string = error_string + " ERROR during processing of version ";
+    error_string = error_string + versionID;
+    error_string = error_string + "\n\t";
+    error_string = error_string + message;
+    Compiler::log_string(error_string);
+    return;
   };
 
-  const std::filesystem::path &command_filename = _llvmManager->getClangExePath();
-  if (command_filename.empty()){
+  const std::filesystem::path &command_filename =
+      _llvmManager->getClangExePath();
+  if (command_filename.empty()) {
     report_error("Clang exe path is empty! Is the _llvmManager initialized?");
   }
-  // clang++ <options> -fpic -shared src -olibFileName -Wno-return-type-c-linkage
+  // clang++ <options> -fpic -shared src -olibFileName
+  // -Wno-return-type-c-linkage
   std::vector<const char *> cmd_str;
   cmd_str.reserve(options.size() + 6);
   cmd_str.push_back(command_filename.c_str());
@@ -150,11 +151,9 @@ std::filesystem::path JITCompiler::generateIR(const std::vector<std::filesystem:
   for (const auto &arg : argv_owner) {
     argv.push_back(arg.c_str());
   }
-  cmd_str.insert(cmd_str.end(),
-                 argv.begin(),
-                 argv.end());
-  for (const auto& src_file : src) {
-   cmd_str.push_back(src_file.c_str());
+  cmd_str.insert(cmd_str.end(), argv.begin(), argv.end());
+  for (const auto &src_file : src) {
+    cmd_str.push_back(src_file.c_str());
   }
 
   // log the command line string used to create this task
@@ -192,7 +191,8 @@ std::filesystem::path JITCompiler::generateIR(const std::vector<std::filesystem:
   }
   const std::string &error_str = "Unknown error:"
                                  " unable to generate bitcode file"
-                                 " - Driver error code: " + std::to_string(res);
+                                 " - Driver error code: " +
+                                 std::to_string(res);
   report_error(error_str);
   return failureFileName;
 }
@@ -220,23 +220,25 @@ std::filesystem::path JITCompiler::generateIR(const std::vector<std::filesystem:
  *
  * This method only supports the legacy pass manager.
  */
-std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src_IR,
-                                      const std::string &versionID,
-                                      const opt_list_t options) const {
+std::filesystem::path
+JITCompiler::runOptimizer(const std::filesystem::path &src_IR,
+                          const std::string &versionID,
+                          const opt_list_t options) const {
   // What we want to generate
-  const std::filesystem::path optBCfilename = Compiler::getOptBitcodeFileName(versionID);
+  const std::filesystem::path optBCfilename =
+      Compiler::getOptBitcodeFileName(versionID);
 
   // what we return when generateIR fails
   const std::filesystem::path failureFileName = "";
 
   auto report_error = [&](const std::string message) {
-      std::string error_string = "JITCompiler::runOptimizer";
-      error_string = error_string + " ERROR during processing of version ";
-      error_string = error_string + versionID;
-      error_string = error_string + "\n\t";
-      error_string = error_string + message;
-      Compiler::log_string(error_string);
-      return;
+    std::string error_string = "JITCompiler::runOptimizer";
+    error_string = error_string + " ERROR during processing of version ";
+    error_string = error_string + versionID;
+    error_string = error_string + "\n\t";
+    error_string = error_string + message;
+    Compiler::log_string(error_string);
+    return;
   };
 
   llvm::LLVMContext optContext;
@@ -244,7 +246,7 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
   const size_t argc = argv_owner.size() + 1; // opt <options>
   std::vector<const char *> argv;
   std::string log_str = std::filesystem::u8path(OPT_EXE_NAME).string();
-  log_str+=" ";
+  log_str += " ";
   argv.reserve(argc);
   argv.push_back(std::move(std::filesystem::u8path(OPT_EXE_NAME).c_str()));
   for (const auto &arg : argv_owner) {
@@ -268,7 +270,8 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
 
   // load llvm::Module
   llvm::SMDiagnostic parsingInputErrorCode;
-  auto module = llvm::parseIRFile(src_IR.string(), parsingInputErrorCode, optContext);
+  auto module =
+      llvm::parseIRFile(src_IR.string(), parsingInputErrorCode, optContext);
   if (!module) {
     std::string parsing_error_str;
     llvm::raw_string_ostream s_ostream(parsing_error_str);
@@ -302,27 +305,29 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
   llvm::Triple moduleTriple(module->getTargetTriple());
   std::string optCPUStr, optFeaturesStr;
   llvm::TargetMachine *optTMachine = nullptr;
-  const llvm::TargetOptions Options = llvm::codegen::InitTargetOptionsFromCodeGenFlags(moduleTriple);
+  const llvm::TargetOptions Options =
+      llvm::codegen::InitTargetOptionsFromCodeGenFlags(moduleTriple);
   // llvm static helper function
   std::string lookupError;
   if (moduleTriple.getArch()) {
-    optCPUStr = llvm::codegen::getCPUStr();            // llvm static helper function
-    optFeaturesStr = llvm::codegen::getFeaturesStr();  // llvm static helper function
+    optCPUStr = llvm::codegen::getCPUStr(); // llvm static helper function
+    optFeaturesStr =
+        llvm::codegen::getFeaturesStr(); // llvm static helper function
   }
-  const llvm::Target *TheTarget = llvm::TargetRegistry::lookupTarget(llvm::codegen::getMArch(),
-                                                               moduleTriple,
-                                                               lookupError);
+  const llvm::Target *TheTarget = llvm::TargetRegistry::lookupTarget(
+      llvm::codegen::getMArch(), moduleTriple, lookupError);
   // Some modules don't specify a triple, and this is okay.
   if (!TheTarget) {
     optTMachine = nullptr;
   } else {
-    optTMachine = TheTarget->createTargetMachine(moduleTriple.getTriple(),
-                                                 optCPUStr,
-                                                 optFeaturesStr,
-                                                 Options,
-                                                 llvm::codegen::getRelocModel(),
-                                                 llvm::CodeModel::Small,// llvm::codegen::getCodeModel returns zero (casted to Tiny), which is wrong! Going with small which is the default model for majority of supported targets
-                                                 GetCodeGenOptLevel());
+    optTMachine = TheTarget->createTargetMachine(
+        moduleTriple.getTriple(), optCPUStr, optFeaturesStr, Options,
+        llvm::codegen::getRelocModel(),
+        llvm::CodeModel::Small, // llvm::codegen::getCodeModel returns zero
+                                // (casted to Tiny), which is wrong! Going with
+                                // small which is the default model for majority
+                                // of supported targets
+        GetCodeGenOptLevel());
   }
   std::unique_ptr<llvm::TargetMachine> actualTM(optTMachine);
   // Override function attributes based on CPUStr, FeaturesStr,
@@ -350,18 +355,14 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
 
   // Add internal analysis passes from the target machine.
   Passes.add(llvm::createTargetTransformInfoWrapperPass(
-          (actualTM) ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
+      (actualTM) ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
 
   std::unique_ptr<llvm::legacy::FunctionPassManager> FPasses;
-  if (OptLevelO0 ||
-      OptLevelO1 ||
-      OptLevelO2 ||
-      OptLevelOs ||
-      OptLevelOz ||
+  if (OptLevelO0 || OptLevelO1 || OptLevelO2 || OptLevelOs || OptLevelOz ||
       OptLevelO3) {
     FPasses.reset(new llvm::legacy::FunctionPassManager(module.get()));
     FPasses->add(llvm::createTargetTransformInfoWrapperPass(
-            actualTM ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
+        actualTM ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
   }
 
   // Create a new optimization pass for each one specified on the command line
@@ -450,9 +451,9 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
 
   std::error_code outFileCreationErrorCode;
   std::unique_ptr<llvm::ToolOutputFile> Out =
-          std::make_unique<llvm::ToolOutputFile>(optBCfilename.c_str(),
-                                                  outFileCreationErrorCode,
-                                                  llvm::sys::fs::OF_None);
+      std::make_unique<llvm::ToolOutputFile>(optBCfilename.c_str(),
+                                             outFileCreationErrorCode,
+                                             llvm::sys::fs::OF_None);
   if (!Out) {
     report_error("Could not create output file");
     return failureFileName;
@@ -483,17 +484,14 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
   } else if (OutputThinLTOBC) {
     Passes.add(createWriteThinLTOBitcodePass(*OS));
   } else {
-    Passes.add(createBitcodeWriterPass(*OS,
-                                       PreserveBitcodeUseListOrder,
-                                       EmitSummaryIndex,
-                                       EmitModuleHash));
+    Passes.add(createBitcodeWriterPass(*OS, PreserveBitcodeUseListOrder,
+                                       EmitSummaryIndex, EmitModuleHash));
   }
 
 #ifdef VC_DEBUG
   // Before executing passes, print the final values of the LLVM options.
   llvm::cl::PrintOptionValues();
 #endif
-
 
   // If requested, run all passes again with the same pass manager to catch
   // bugs caused by persistent state in the passes
@@ -510,15 +508,14 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
   // Compare the two outputs and make sure they're the same
   if (RunTwice) {
     if (Buffer.size() != CompileTwiceBuffer.size() ||
-        (memcmp(Buffer.data(),
-                CompileTwiceBuffer.data(),
-                Buffer.size()) != 0)) {
+        (memcmp(Buffer.data(), CompileTwiceBuffer.data(), Buffer.size()) !=
+         0)) {
       // running twice the same passes generated diverging bitcode versions
       const std::string error_message =
-              "Running the pass manager twice changed the output.\n"
-              "Writing the result of the second run to the specified output.\n"
-              "To generate the one-run comparison binary, just run without\n"
-              "the compile-twice option\n";
+          "Running the pass manager twice changed the output.\n"
+          "Writing the result of the second run to the specified output.\n"
+          "To generate the one-run comparison binary, just run without\n"
+          "the compile-twice option\n";
       report_error(error_message);
       Out->os() << BOS->str();
       Out->keep();
@@ -545,28 +542,32 @@ std::filesystem::path JITCompiler::runOptimizer(const std::filesystem::path &src
 // ---------------------------------------------------------------------------
 /** addModule wrapper
  *
- * Makes the actual call to llvm CompileLayer addModule functions and saves the JIT compilation
- * results in the JITCompiler class state
+ * Makes the actual call to llvm CompileLayer addModule functions and saves the
+ * JIT compilation results in the JITCompiler class state
  */
-void JITCompiler::addModule(std::unique_ptr<llvm::Module> m, const std::string &versionID) {
-  llvm::orc::ThreadSafeModule TSM(std::move(m),_tsctx);
+void JITCompiler::addModule(std::unique_ptr<llvm::Module> m,
+                            const std::string &versionID) {
+  llvm::orc::ThreadSafeModule TSM(std::move(m), _tsctx);
   auto cm_iterator = _layer_map.find(versionID);
 
   if (cm_iterator == _layer_map.end()) {
     std::string error_string = "JITCompiler::addModule ";
-    error_string = error_string + "compileLayer for " + versionID + " not found";
+    error_string =
+        error_string + "compileLayer for " + versionID + " not found";
     Compiler::log_string(error_string);
     return;
   }
   _resource_tracker_map[versionID] = _mainJD.createResourceTracker();
-  llvm::cantFail(cm_iterator->second->add(_resource_tracker_map[versionID],std::move(TSM)));
+  llvm::cantFail(cm_iterator->second->add(_resource_tracker_map[versionID],
+                                          std::move(TSM)));
   return;
 }
 
 // ---------------------------------------------------------------------------
 // ------------------------------- findSymbol --------------------------------
 // ---------------------------------------------------------------------------
-llvm::Expected<llvm::JITEvaluatedSymbol> JITCompiler::findSymbol(const std::string Name, const std::string &versionID) {
+llvm::Expected<llvm::JITEvaluatedSymbol>
+JITCompiler::findSymbol(const std::string Name, const std::string &versionID) {
   llvm::StringRef llvmName(Name);
   return _ES->lookup({&_mainJD}, _mangle(llvmName.str()));
 }
@@ -576,11 +577,10 @@ llvm::Expected<llvm::JITEvaluatedSymbol> JITCompiler::findSymbol(const std::stri
 // ---------------------------------------------------------------------------
 /** Symbol Loading
  *
- * This implementation looks for the version saved module and adds it to the llvm
- * CompileLayer. It later resolves the symbol and returns it to its caller. This is
- * the function which actually performs the JIT compilation
+ * This implementation looks for the version saved module and adds it to the
+ * llvm CompileLayer. It later resolves the symbol and returns it to its caller.
+ * This is the function which actually performs the JIT compilation
  */
-
 
 //  if (exists(bin)) {
 //    *handler = dlopen(bin.c_str(), RTLD_NOW);
@@ -607,9 +607,9 @@ llvm::Expected<llvm::JITEvaluatedSymbol> JITCompiler::findSymbol(const std::stri
 //  }
 //  return symbols;
 
-std::vector<void*> JITCompiler::loadSymbols(const std::filesystem::path &bin,
-                               const std::vector<std::string> &func,
-                               void ** handler) {
+std::vector<void *>
+JITCompiler::loadSymbols(const std::filesystem::path &bin,
+                         const std::vector<std::string> &func, void **handler) {
 
   std::vector<void *> symbols = {};
 
@@ -619,50 +619,54 @@ std::vector<void*> JITCompiler::loadSymbols(const std::filesystem::path &bin,
   auto mm_iterator = _modules_map.find(versionID);
   if (mm_iterator == _modules_map.end()) {
     std::string error_string = "JITCompiler::loadSymbol ";
-    error_string = error_string + "cannot load symbol from " + versionID + " - module not found";
+    error_string = error_string + "cannot load symbol from " + versionID +
+                   " - module not found";
     Compiler::log_string(error_string);
     return symbols;
   }
   *handler = new std::string(bin);
   // Calling a wrapper to the actual llvm addModule method
-    auto report_error = [&](const std::string message) {
-      std::string error_string = "JITCompiler::loadSymbols";
-      error_string = error_string + " ERROR during processing of version ";
-      error_string = error_string + versionID;
-      error_string = error_string + "\n\t";
-      error_string = error_string + message;
-      Compiler::log_string(error_string);
-      return;
+  auto report_error = [&](const std::string message) {
+    std::string error_string = "JITCompiler::loadSymbols";
+    error_string = error_string + " ERROR during processing of version ";
+    error_string = error_string + versionID;
+    error_string = error_string + "\n\t";
+    error_string = error_string + message;
+    Compiler::log_string(error_string);
+    return;
   };
   llvm::SMDiagnostic parsing_input_error_code;
-  addModule(std::move(llvm::parseIRFile(mm_iterator->second,parsing_input_error_code, *(_tsctx.getContext()))), bin);
-  if (parsing_input_error_code.getMessage().size()>0){
+  addModule(
+      std::move(llvm::parseIRFile(mm_iterator->second, parsing_input_error_code,
+                                  *(_tsctx.getContext()))),
+      bin);
+  if (parsing_input_error_code.getMessage().size() > 0) {
     report_error(parsing_input_error_code.getMessage().str());
   }
-    auto hm_iterator = _resource_tracker_map.find(versionID);
+  auto hm_iterator = _resource_tracker_map.find(versionID);
   if (hm_iterator == _resource_tracker_map.end()) {
     std::string error_string = "JITCompiler::loadSymbol ";
-    error_string = error_string + "cannot load symbol from " + versionID + " - addModule call failed";
+    error_string = error_string + "cannot load symbol from " + versionID +
+                   " - addModule call failed";
     Compiler::log_string(error_string);
     return symbols;
   }
 
   _isloaded_map[versionID] = true;
 
-  for (const std::string& f : func) {
-    auto findSym=findSymbol(f, versionID);
+  for (const std::string &f : func) {
+    auto findSym = findSymbol(f, versionID);
     llvm::cantFail(findSym.takeError());
-    void *symbol = (void* )findSym->getAddress();
+    void *symbol = (void *)findSym->getAddress();
     if (!symbol) {
-      std::string error_str = "cannot load symbol " + f + " from " + bin.string() +
-      " : symbol not found";
+      std::string error_str = "cannot load symbol " + f + " from " +
+                              bin.string() + " : symbol not found";
       Compiler::log_string(error_str);
     }
     symbols.push_back(symbol);
   } // end for
 
   return symbols;
-
 }
 
 // ---------------------------------------------------------------------------
@@ -670,13 +674,13 @@ std::vector<void*> JITCompiler::loadSymbols(const std::filesystem::path &bin,
 // ---------------------------------------------------------------------------
 /** Module release
  *
- * This implementation uses the handler argument to keep the internal JITCompiler
- * class state consistent cleaning the loaded symbols and removing the llvm Module
- * from the specific CompileLayer
+ * This implementation uses the handler argument to keep the internal
+ * JITCompiler class state consistent cleaning the loaded symbols and removing
+ * the llvm Module from the specific CompileLayer
  */
 void JITCompiler::releaseSymbol(void **handler) {
 
-  std::string *id = static_cast< std::string *>(*handler);
+  std::string *id = static_cast<std::string *>(*handler);
 
   auto map_rows_iterator = _isloaded_map.find(*id);
   if (map_rows_iterator == _isloaded_map.end()) {
@@ -685,11 +689,13 @@ void JITCompiler::releaseSymbol(void **handler) {
     Compiler::log_string(error_string);
     return;
   } else {
-    llvm::cantFail(_resource_tracker_map[*id]->remove()); // release all resources linked to this ResourceTrackerSP
+    llvm::cantFail(
+        _resource_tracker_map[*id]->remove()); // release all resources linked
+                                               // to this ResourceTrackerSP
     _resource_tracker_map.erase(*id);
     _isloaded_map.erase(*id);
   }
-  delete(id);
+  delete (id);
   *handler = nullptr;
   return;
 }
@@ -699,29 +705,36 @@ void JITCompiler::releaseSymbol(void **handler) {
 // ---------------------------------------------------------------------------
 /** JIT Compile the llvm module
  *
- * This implementation parses a previously generated (and eventually optimized) IR file
- * elevating it to its in-memory representation. This module is then saved in the JITCompiler
- * class instance state to be later added (by the loadSymbol method) to llvm's CompilerLayer
+ * This implementation parses a previously generated (and eventually optimized)
+ * IR file elevating it to its in-memory representation. This module is then
+ * saved in the JITCompiler class instance state to be later added (by the
+ * loadSymbol method) to llvm's CompilerLayer
  */
-std::filesystem::path JITCompiler::generateBin(const std::vector<std::filesystem::path> &src,
-                                     const std::vector<std::string> &func,
-                                     const std::string &versionID,
-                                     const opt_list_t options) {
+std::filesystem::path
+JITCompiler::generateBin(const std::vector<std::filesystem::path> &src,
+                         const std::vector<std::string> &func,
+                         const std::string &versionID,
+                         const opt_list_t options) {
 
   // The source IR file name to JIT compile
-  std::filesystem::path source = src[0]; // if contains IR then it's just one element, otherwise will generate it
+  std::filesystem::path source = src[0]; // if contains IR then it's just one
+                                         // element, otherwise will generate it
 
-  _obj_map[versionID] = std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(*this->_ES,
-                    []() { return std::make_unique<llvm::SectionMemoryManager>(); });
+  _obj_map[versionID] =
+      std::make_unique<llvm::orc::RTDyldObjectLinkingLayer>(*this->_ES, []() {
+        return std::make_unique<llvm::SectionMemoryManager>();
+      });
   _layer_map[versionID] = std::make_unique<llvm::orc::IRCompileLayer>(
-          *this->_ES, 
-          *(_obj_map[versionID]),
-          std::make_unique<llvm::orc::ConcurrentIRCompiler>(std::move(this->_JTMB)));
+      *this->_ES, *(_obj_map[versionID]),
+      std::make_unique<llvm::orc::ConcurrentIRCompiler>(
+          std::move(this->_JTMB)));
 
   // IR filename
-  const std::filesystem::path llvmIRfileName = Compiler::getBitcodeFileName(versionID);
+  const std::filesystem::path llvmIRfileName =
+      Compiler::getBitcodeFileName(versionID);
   // IR optimized filename
-  const std::filesystem::path llvmOPTIRfileName = Compiler::getOptBitcodeFileName(versionID);
+  const std::filesystem::path llvmOPTIRfileName =
+      Compiler::getOptBitcodeFileName(versionID);
   // If IR files were not generated, generate it now but don't optimize it
   if (!exists(llvmOPTIRfileName) && !exists(llvmIRfileName)) {
     Compiler::log_string("IR file not found, generating from source..");
@@ -729,29 +742,32 @@ std::filesystem::path JITCompiler::generateBin(const std::vector<std::filesystem
     source = generateIR(src, func, versionID, options);
   }
 
-
   // What we return when generateIR fails
   const std::string failureName = "";
 
-
   auto report_error = [&](const std::string message) {
-      std::string error_string = "JITCompiler::generateBin";
-      error_string = error_string + " ERROR during processing of version ";
-      error_string = error_string + versionID;
-      error_string = error_string + "\n\t";
-      error_string = error_string + message;
-      Compiler::log_string(error_string);
-      return;
+    std::string error_string = "JITCompiler::generateBin";
+    error_string = error_string + " ERROR during processing of version ";
+    error_string = error_string + versionID;
+    error_string = error_string + "\n\t";
+    error_string = error_string + message;
+    Compiler::log_string(error_string);
+    return;
   };
 
   llvm::SMDiagnostic parsing_input_error_code;
   Compiler::log_string("Jitting IR file: " + source.string());
 
-  _modules_map[versionID] = source; // this used to be std::move(llvm::parseIRFile(source, parsing_input_error_code, *(_tsctx.getContext())));
-  
-  auto m = std::move(llvm::parseIRFile(_modules_map[versionID], parsing_input_error_code, *(_tsctx.getContext())));
+  _modules_map[versionID] =
+      source; // this used to be std::move(llvm::parseIRFile(source,
+              // parsing_input_error_code, *(_tsctx.getContext())));
+
+  auto m = std::move(llvm::parseIRFile(_modules_map[versionID],
+                                       parsing_input_error_code,
+                                       *(_tsctx.getContext())));
   if (parsing_input_error_code.getMessage().str().length() > 0) {
-    report_error("Module was not generated: "+parsing_input_error_code.getMessage().str());
+    report_error("Module was not generated: " +
+                 parsing_input_error_code.getMessage().str());
     return failureName;
   }
   addModule(std::move(m), versionID);
@@ -761,9 +777,7 @@ std::filesystem::path JITCompiler::generateBin(const std::vector<std::filesystem
 // ---------------------------------------------------------------------------
 // ------------------------------ hasOptimizer -------------------------------
 // ---------------------------------------------------------------------------
-bool JITCompiler::hasOptimizer() const {
-  return true;
-}
+bool JITCompiler::hasOptimizer() const { return true; }
 
 // ---------------------------------------------------------------------------
 // ----------------------------- getOptionString -----------------------------
@@ -781,8 +795,8 @@ inline std::string JITCompiler::getOptionString(const Option &o) const {
 // ---------------------------------------------------------------------------
 // --------------------------------- getArgV ---------------------------------
 // ---------------------------------------------------------------------------
-inline std::vector<std::string> JITCompiler::getArgV(
-        const opt_list_t optionList) const {
+inline std::vector<std::string>
+JITCompiler::getArgV(const opt_list_t optionList) const {
   std::vector<std::string> v;
   v.reserve(optionList.size());
   for (const auto &o : optionList) {
@@ -790,5 +804,3 @@ inline std::vector<std::string> JITCompiler::getArgV(
   }
   return v;
 }
-
-

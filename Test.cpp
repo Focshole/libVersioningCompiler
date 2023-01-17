@@ -30,11 +30,10 @@
 #include <string>
 #include <vector>
 
-
 #ifndef FORCED_PATH_TO_TEST
 #define FORCED_PATH_TO_TEST "../libVersioningCompiler/test_code"
 #endif
-#define PATH_TO_C_TEST_CODE FORCED_PATH_TO_TEST"/test_code.c"
+#define PATH_TO_C_TEST_CODE FORCED_PATH_TO_TEST "/test_code.c"
 
 #ifndef TEST_FUNCTION
 #define TEST_FUNCTION "test_function"
@@ -64,8 +63,7 @@
 // in the form of function pointer type.
 typedef int (*signature_t)(int);
 
-int main(int argc, char const *argv[])
-{
+int main(int argc, char const *argv[]) {
   // At least one builder is needed. A builder will provide the immutable
   // object Verison, which identifies a function version configuration.
   // There are more that one builder just to show different constructors.
@@ -81,43 +79,28 @@ int main(int argc, char const *argv[])
   // ---------- Initialize the compiler to be used. ----------
   // Should be done just once.
   // Compiler is stateless from all points of view but logging:
-  // if required (i.e. !log_filename.empty()) it keeps a continous log of commands
-  // and errors.
-  // Right now only Compilers called via a system call are available. That's
-  // why they are called SystemCompilers.
-  // Support for Compiler-as-a-library will be added soon.
+  // if required (i.e. !log_filename.empty()) it keeps a continous log of
+  // commands and errors. Right now only Compilers called via a system call are
+  // available. That's why they are called SystemCompilers. Support for
+  // Compiler-as-a-library will be added soon.
   vc::compiler_ptr_t cc = vc::make_compiler<vc::SystemCompiler>();
   vc::compiler_ptr_t gcc = vc::make_compiler<vc::SystemCompiler>(
-                                                                 "gcc",
-                                                                 "gcc",
-                                                                 ".",
-                                                                 "./test.log",
-                                                                 "/usr/bin",
-                                                                 false
-                                                                 );
+      "gcc", "gcc", ".", "./test.log", "/usr/bin", false);
   // FAQ: I have a separate install folder for LLVM/clang.
   // ANS: Here it is an example of how to handle that case.
   vc::compiler_ptr_t clang = vc::make_compiler<vc::SystemCompilerOptimizer>(
-                                          "llvm/clang",
-                                          std::filesystem::u8path(CLANG_EXE_NAME),
-                                          std::filesystem::u8path(OPT_EXE_FULLPATH),
-                                          ".",
-                                          "./test.log", 
-                                          std::filesystem::u8path(LLVM_TOOLS_BINARY_DIR),
-                                          "/"
-                                        );
+      "llvm/clang", std::filesystem::u8path(CLANG_EXE_NAME),
+      std::filesystem::u8path(OPT_EXE_FULLPATH), ".", "./test.log",
+      std::filesystem::u8path(LLVM_TOOLS_BINARY_DIR), "/");
 #if HAVE_CLANG_AS_LIB
   vc::compiler_ptr_t clangAsLib = vc::make_compiler<vc::ClangLibCompiler>(
-                                          "clangAsALibrary",
-                                          ".",
-                                          "test_clang.log"
-                                        );
+      "clangAsALibrary", ".", "test_clang.log");
 #endif
   // ---------- End compilers initialization ----------
   // start configuring version v
   builder._compiler = cc;
   // avoid relocation problems with global variables
-  builder._genIROptionList={vc::Option("fpic", "-fPIC")};
+  builder._genIROptionList = {vc::Option("fpic", "-fPIC")};
   // finalization of a version. no compilation has been called yet.
   vc::version_ptr_t v = builder.build();
   // end configuring version v
@@ -138,11 +121,9 @@ int main(int argc, char const *argv[])
   another_builder = vc::Version::Builder(v2);
   another_builder._compiler = clang;
   another_builder._optOptionList = {
-                                    vc::Option("fp-contract", "-fp-contract=", "fast"),
-                                    vc::Option("inline", "-inline"),
-                                    vc::Option("unroll", "-loop-unroll"),
-                                    vc::Option("mem2reg", "-mem2reg")
-                                   };
+      vc::Option("fp-contract", "-fp-contract=", "fast"),
+      vc::Option("inline", "-inline"), vc::Option("unroll", "-loop-unroll"),
+      vc::Option("mem2reg", "-mem2reg")};
   vc::version_ptr_t v3 = another_builder.build();
   // end configuring version v3
 
@@ -152,16 +133,16 @@ int main(int argc, char const *argv[])
 #endif
   builder._autoremoveFilesEnable = true;
   builder._optOptionList = {
-                            vc::Option("mem2reg", "-mem2reg"),
-                            vc::Option("o", "-O", "3"),
-                           };
+      vc::Option("mem2reg", "-mem2reg"),
+      vc::Option("o", "-O", "3"),
+  };
   vc::version_ptr_t v4 = builder.build();
   // end configuring version v4
 
   // actually compile v.
   bool ok = v->compile();
-  if (! ok) { // something during the compilation went wrong
-    if (! v->hasGeneratedBin()) {
+  if (!ok) { // something during the compilation went wrong
+    if (!v->hasGeneratedBin()) {
       std::cerr << "Error: compilation failed." << std::endl;
     } else {
       std::cerr << "Error: symbol not loaded" << std::endl;
@@ -171,8 +152,8 @@ int main(int argc, char const *argv[])
   // same for v2
   std::cerr << "Notify: v compiled. Going for v2" << std::endl;
   ok = v2->compile();
-  if (! ok) {
-    if (! v2->hasGeneratedBin()) {
+  if (!ok) {
+    if (!v2->hasGeneratedBin()) {
       std::cerr << "Error: compilation 2 failed." << std::endl;
     } else {
       std::cerr << "Error: symbol 2 not loaded" << std::endl;
@@ -183,21 +164,24 @@ int main(int argc, char const *argv[])
   // prepare LLVM-IR file (generate IR and run optimizer, if available)
   std::cerr << "Notify: v2 compiled. Going for v3 prepareIR" << std::endl;
   ok = v3->prepareIR();
-  if (! ok) {
-    if (! clang->hasIRSupport()) {
-      std::cerr << "Error: something went wrong with the compiler." << std::endl;
-    } else if (! v3->hasGeneratedIR()) {
+  if (!ok) {
+    if (!clang->hasIRSupport()) {
+      std::cerr << "Error: something went wrong with the compiler."
+                << std::endl;
+    } else if (!v3->hasGeneratedIR()) {
       std::cerr << "Error: generation of IR v3 failed." << std::endl;
     } else {
       std::cerr << "Error: optimization of IR v3 failed." << std::endl;
     }
-    std::cerr << "\tPlease check the compiler/optimizer install path in Test.cpp source file" << std::endl;
+    std::cerr << "\tPlease check the compiler/optimizer install path in "
+                 "Test.cpp source file"
+              << std::endl;
   }
   std::cerr << "Notify: v3 IR prepared. Going for v3 compilation" << std::endl;
   // compiles from optimized version, if available
   ok = v3->compile();
-  if (! ok) {
-    if (! v3->hasGeneratedBin()) {
+  if (!ok) {
+    if (!v3->hasGeneratedBin()) {
       std::cerr << "Error: compilation 3 failed." << std::endl;
     } else {
       std::cerr << "Error: symbol 3 not loaded" << std::endl;
@@ -206,21 +190,24 @@ int main(int argc, char const *argv[])
   }
   std::cerr << "Notify: v3 compiled. Going for v4" << std::endl;
   ok = v4->prepareIR();
-  if (! ok) {
-    if (! clang->hasIRSupport()) {
-      std::cerr << "Error: something went wrong with the compiler." << std::endl;
-    } else if (! v3->hasGeneratedIR()) {
+  if (!ok) {
+    if (!clang->hasIRSupport()) {
+      std::cerr << "Error: something went wrong with the compiler."
+                << std::endl;
+    } else if (!v3->hasGeneratedIR()) {
       std::cerr << "Error: generation of IR v4 failed." << std::endl;
     } else {
       std::cerr << "Error: optimization of IR v4 failed." << std::endl;
     }
-    std::cerr << "\tPlease check the compiler/optimizer install path" << std::endl;
+    std::cerr << "\tPlease check the compiler/optimizer install path"
+              << std::endl;
   }
   std::cout << "Notify: v4 IR prepared. Going for v4 compilation" << std::endl;
   ok = v4->compile();
   if (!ok) {
     if (v4->hasGeneratedBin()) {
-      std::cerr << "v4 has generated binary "<< v4->getFileName_bin() << std::endl;
+      std::cerr << "v4 has generated binary " << v4->getFileName_bin()
+                << std::endl;
     }
     if (v4->hasLoadedSymbol()) {
       std::cerr << "v4 has loaded symbol" << std::endl;
@@ -230,13 +217,10 @@ int main(int argc, char const *argv[])
   }
   std::cout << "Notify: v4 compiled." << std::endl;
 
-  vc::version_ptr_t v5 =
-    vc::Version::Builder::createFromSO(v4->getFileName_bin(),
-                                       TEST_FUNCTION,
-                                       gcc,
-                                       false,
-                                       {"version created from shared object"});
-  if (! v5->compile()) {
+  vc::version_ptr_t v5 = vc::Version::Builder::createFromSO(
+      v4->getFileName_bin(), TEST_FUNCTION, gcc, false,
+      {"version created from shared object"});
+  if (!v5->compile()) {
     if (v5->hasGeneratedBin()) {
       std::cerr << "v5 has binary " << v5->getFileName_bin() << std::endl;
     }

@@ -37,65 +37,56 @@
 namespace vc {
 
 /** Default compiler to be used in this helper. */
-    compiler_ptr_t _libVC_jit_compiler;
+compiler_ptr_t _libVC_jit_compiler;
 
-    llvm::TargetMachine *_targetMachine;
+llvm::TargetMachine *_targetMachine;
 
 /** Instantiate JIT Compiler */
-    compiler_ptr_t vc_utils_init();
-
-
+compiler_ptr_t vc_utils_init();
 
 /** Create a Version using default parameters */
-    version_ptr_t createVersion(const std::filesystem::path &src,
-                                const std::string &fn,
-                                const opt_list_t &options);
+version_ptr_t createVersion(const std::filesystem::path &src,
+                            const std::string &fn, const opt_list_t &options);
 
 /** Compile a version and extract function pointer (has to be casted) */
-    void *compileAndGetSymbol(version_ptr_t &v);
-
+void *compileAndGetSymbol(version_ptr_t &v);
 
 //---------- implementation ----------
 
-    compiler_ptr_t vc_utils_init() {
+compiler_ptr_t vc_utils_init() {
 
-        llvm::InitializeNativeTarget();
-        llvm::InitializeNativeTargetAsmPrinter();
-        llvm::InitializeNativeTargetAsmParser();
+  llvm::InitializeNativeTarget();
+  llvm::InitializeNativeTargetAsmPrinter();
+  llvm::InitializeNativeTargetAsmParser();
 
-        std::cout << "Setting up target machine.." << std::endl;
-        _targetMachine = llvm::EngineBuilder().selectTarget();
+  std::cout << "Setting up target machine.." << std::endl;
+  _targetMachine = llvm::EngineBuilder().selectTarget();
 
-        // ---------- Compiler initialization ---------
-        std::cout << "Setting up compiler.." << std::endl;
-        _libVC_jit_compiler = vc::make_compiler<vc::JITCompiler>(
-                "jitCompiler",
-                ".",
-                "./test_jit.log",
-                *_targetMachine
-        );
-    }
+  // ---------- Compiler initialization ---------
+  std::cout << "Setting up compiler.." << std::endl;
+  _libVC_jit_compiler = vc::make_compiler<vc::JITCompiler>(
+      "jitCompiler", ".", "./test_jit.log", *_targetMachine);
+}
 
-    version_ptr_t createVersion(const std::filesystem::path &src,
-                                const std::string &fn,
-                                const opt_list_t &options) {
+version_ptr_t createVersion(const std::filesystem::path &src,
+                            const std::string &fn, const opt_list_t &options) {
 
-        std::cout << "Setting up builder.." << std::endl;
-        Version::Builder builder;
-        builder._compiler = _libVC_jit_compiler;
-        builder._fileName_src = {src};
-        builder._functionName = {fn};
-        builder._optionList = options;
-        // builder.addFunctionFlag();
-        builder._autoremoveFilesEnable = true;
-        return builder.build();
-    }
+  std::cout << "Setting up builder.." << std::endl;
+  Version::Builder builder;
+  builder._compiler = _libVC_jit_compiler;
+  builder._fileName_src = {src};
+  builder._functionName = {fn};
+  builder._optionList = options;
+  // builder.addFunctionFlag();
+  builder._autoremoveFilesEnable = true;
+  return builder.build();
+}
 
-    void *compileAndGetSymbol(version_ptr_t &v) {
+void *compileAndGetSymbol(version_ptr_t &v) {
 
-        v->compile();
-        return v->getSymbol();
-    }
+  v->compile();
+  return v->getSymbol();
+}
 
 } // end namespace vc
 

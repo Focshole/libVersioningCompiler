@@ -27,6 +27,11 @@
  * You should have received a copy of the GNU Lesser General Public License
  * along with libVersioningCompiler. If not, see <http://www.gnu.org/licenses/>
  */
+#include "versioningCompiler/CompilerImpl/ClangLibCompiler.hpp"
+#include "versioningCompiler/CompilerImpl/JITCompiler.hpp"
+#include "versioningCompiler/CompilerImpl/SystemCompiler.hpp"
+#include "versioningCompiler/CompilerImpl/SystemCompilerOptimizer.hpp"
+#include "versioningCompiler/Version.hpp"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/ExecutionEngine/ExecutionEngine.h"
 #include "llvm/ExecutionEngine/JITSymbol.h"
@@ -38,13 +43,8 @@
 #include "llvm/IR/DataLayout.h"
 #include "llvm/IR/Mangler.h"
 #include "llvm/Support/DynamicLibrary.h"
-#include "llvm/Support/raw_ostream.h"
 #include "llvm/Support/TargetSelect.h"
-#include "versioningCompiler/CompilerImpl/ClangLibCompiler.hpp"
-#include "versioningCompiler/CompilerImpl/JITCompiler.hpp"
-#include "versioningCompiler/CompilerImpl/SystemCompiler.hpp"
-#include "versioningCompiler/CompilerImpl/SystemCompilerOptimizer.hpp"
-#include "versioningCompiler/Version.hpp"
+#include "llvm/Support/raw_ostream.h"
 
 #include <algorithm>
 #include <iostream>
@@ -52,8 +52,6 @@
 #include <stdlib.h>
 #include <string>
 #include <vector>
-
-
 
 #ifndef FORCED_PATH_TO_TEST
 #define FORCED_PATH_TO_TEST "../libVersioningCompiler/test_code"
@@ -67,7 +65,6 @@
 #ifndef TEST_FUNCTION_LBL
 #define TEST_FUNCTION_LBL "TEST_FUNCTION"
 #endif
-
 
 using namespace llvm;
 using namespace orc;
@@ -91,18 +88,14 @@ int main(int argc, char const *argv[]) {
 
   // ---------- Compiler initialization ---------
   std::cout << "Setting up compiler.." << std::endl;
-  vc::compiler_ptr_t jitCompiler = vc::make_compiler<vc::JITCompiler>(
-          "jitCompiler",
-          ".",
-          "./test_jit.log"
-  );
-
+  vc::compiler_ptr_t jitCompiler =
+      vc::make_compiler<vc::JITCompiler>("jitCompiler", ".", "./test_jit.log");
 
   builder._compiler = jitCompiler;
   builder._autoremoveFilesEnable = false;
   builder._optOptionList = {
-          vc::Option("mem2reg", "-mem2reg"),
-          vc::Option("o", "-O", "3"),
+      vc::Option("mem2reg", "-mem2reg"),
+      vc::Option("o", "-O", "3"),
   };
   std::cout << "Building version.." << std::endl;
   vc::version_ptr_t myversion = builder.build();
@@ -111,13 +104,16 @@ int main(int argc, char const *argv[]) {
   bool ok = myversion->prepareIR();
   if (!ok) {
     if (!jitCompiler->hasIRSupport()) {
-      std::cerr << "Error: something went wrong with the compiler." << std::endl;
+      std::cerr << "Error: something went wrong with the compiler."
+                << std::endl;
     } else if (!myversion->hasGeneratedIR()) {
       std::cerr << "Error: generation of IR for myversion failed." << std::endl;
     } else {
-      std::cerr << "Error: optimization of IR for myversion failed." << std::endl;
+      std::cerr << "Error: optimization of IR for myversion failed."
+                << std::endl;
     }
-    std::cerr << "\tPlease check the compiler/optimizer install path" << std::endl;
+    std::cerr << "\tPlease check the compiler/optimizer install path"
+              << std::endl;
     return -1;
   }
   std::cout << "IR prepared. Going for myversion compilation.." << std::endl;
@@ -126,7 +122,8 @@ int main(int argc, char const *argv[]) {
   if (!ok) {
     std::cerr << "Error: myversion compilation has failed." << std::endl;
     if (myversion->hasGeneratedBin()) {
-      std::cerr << "\tmyversion has generated binary " << myversion->getFileName_bin() << std::endl;
+      std::cerr << "\tmyversion has generated binary "
+                << myversion->getFileName_bin() << std::endl;
     }
     if (myversion->hasLoadedSymbol()) {
       std::cerr << "\tmyversion has loaded symbol" << std::endl;
@@ -138,7 +135,7 @@ int main(int argc, char const *argv[]) {
   std::cout << "Executing myversion symbol." << std::endl;
 
   std::vector<signature_t> f;
-  f.push_back((signature_t) myversion->getSymbol());
+  f.push_back((signature_t)myversion->getSymbol());
   std::cout << "Result 1: " << f[0](42) << std::endl;
   std::cout << "Result 2: " << f[0](12) << std::endl;
   std::cout << "Result 3: " << f[0](128) << std::endl;
@@ -149,7 +146,7 @@ int main(int argc, char const *argv[]) {
   std::cout << "Version folded, reloading it." << std::endl;
   myversion->reload();
   std::cout << "Executing myversion reloaded symbol." << std::endl;
-  signature_t reloaded = (signature_t) myversion->getSymbol();
+  signature_t reloaded = (signature_t)myversion->getSymbol();
   if (reloaded) {
     std::cout << "Result r1: " << reloaded(42) << std::endl;
     std::cout << "Result r2: " << reloaded(12) << std::endl;

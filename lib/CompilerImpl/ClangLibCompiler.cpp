@@ -22,15 +22,15 @@
  * along with libVersioningCompiler. If not, see <http://www.gnu.org/licenses/>
  */
 
+#include "versioningCompiler/CompilerImpl/ClangLibCompiler.hpp"
+#include "versioningCompiler/CompilerImpl/ClangLLVM/FileLogDiagnosticConsumer.hpp"
+#include "versioningCompiler/CompilerImpl/ClangLLVM/OptUtils.hpp" // opt stuff
+#include "versioningCompiler/DebugUtils.hpp"
 #include "clang/CodeGen/CodeGenAction.h"
 #include "clang/Driver/Compilation.h"
 #include "clang/Driver/Driver.h"
 #include "clang/Driver/Job.h"
 #include "clang/Frontend/CompilerInvocation.h"
-#include "versioningCompiler/CompilerImpl/ClangLibCompiler.hpp"
-#include "versioningCompiler/CompilerImpl/ClangLLVM/FileLogDiagnosticConsumer.hpp"
-#include "versioningCompiler/CompilerImpl/ClangLLVM/OptUtils.hpp" // opt stuff
-#include "versioningCompiler/DebugUtils.hpp"
 
 #include <vector>
 
@@ -48,28 +48,24 @@ std::mutex ClangLibCompiler::opt_parse_mtx;
 // ----------------------- zero-parameters constructor ------------------------
 // ----------------------------------------------------------------------------
 ClangLibCompiler::ClangLibCompiler()
-                : ClangLibCompiler(
-                                   "ClangLibCompiler", // compilerID
-                                   ".",                // libWorkingDir
-                                   ""                  // no log file
-                                  ) { }
+    : ClangLibCompiler("ClangLibCompiler", // compilerID
+                       ".",                // libWorkingDir
+                       ""                  // no log file
+      ) {}
 
 // ----------------------------------------------------------------------------
 // --------------------------- detailed constructor ---------------------------
 // ----------------------------------------------------------------------------
-ClangLibCompiler::ClangLibCompiler(
-                                   const std::string &compilerID,
+ClangLibCompiler::ClangLibCompiler(const std::string &compilerID,
                                    const std::filesystem::path &libWorkingDir,
-                                   const std::filesystem::path &log
-                                  ) : Compiler(
-                                               compilerID,
-                                               "#", // compiler call string
-                                               libWorkingDir,
-                                               log, // log filename
-                                               "~", // install directory
-                                               true // support IR
-                                              )
-{
+                                   const std::filesystem::path &log)
+    : Compiler(compilerID,
+               "#", // compiler call string
+               libWorkingDir,
+               log, // log filename
+               "~", // install directory
+               true // support IR
+      ) {
   // initialize LLVM stuff and shutdown everything at program tear down
   _llvmManager = LLVMInstanceManager::getInstance();
 
@@ -77,12 +73,9 @@ ClangLibCompiler::ClangLibCompiler(
   _diagnosticOptions = new clang::DiagnosticOptions();
   _diagnosticIDs = new clang::DiagnosticIDs();
   _diagConsumer = std::make_shared<vc::FileLogDiagnosticConsumer>(
-                                       log,
-                                       _diagnosticOptions.get());
-  _diagEngine = new clang::DiagnosticsEngine(_diagnosticIDs,
-                                             _diagnosticOptions.get(),
-                                             _diagConsumer.get(),
-                                             false);
+      log, _diagnosticOptions.get());
+  _diagEngine = new clang::DiagnosticsEngine(
+      _diagnosticIDs, _diagnosticOptions.get(), _diagConsumer.get(), false);
   return;
 }
 
@@ -94,13 +87,14 @@ ClangLibCompiler::ClangLibCompiler(
  * This implementation exploits the clang driver to handle all the stages of
  * the compilation process.
  */
-std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesystem::path> &src,
-                                         const std::vector<std::string> &func,
-                                         const std::string &versionID,
-                                         const opt_list_t options)
-{
+std::filesystem::path
+ClangLibCompiler::generateIR(const std::vector<std::filesystem::path> &src,
+                             const std::vector<std::string> &func,
+                             const std::string &versionID,
+                             const opt_list_t options) {
   // What we want to generate
-  const std::filesystem::path &llvmIRfileName = Compiler::getBitcodeFileName(versionID);
+  const std::filesystem::path &llvmIRfileName =
+      Compiler::getBitcodeFileName(versionID);
   // what we return when generateIR fails
   const std::filesystem::path &failureFileName = "";
   std::string log_str = "";
@@ -115,9 +109,11 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
     return;
   };
 
-  const std::filesystem::path &command_filename = _llvmManager->getClangExePath();
+  const std::filesystem::path &command_filename =
+      _llvmManager->getClangExePath();
 
-  // clang++ <options> -fpic -shared src -olibFileName -Wno-return-type-c-linkage
+  // clang++ <options> -fpic -shared src -olibFileName
+  // -Wno-return-type-c-linkage
   std::vector<const char *> cmd_str;
   cmd_str.reserve(options.size() + 6);
   cmd_str.push_back(command_filename.c_str());
@@ -129,21 +125,19 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
   cmd_str.push_back(std::move(outputArgument).c_str());
 
   // create a local copy of option strings
-  const auto& argv_owner = getArgV(options);
-  std::vector<const char*> argv;
+  const auto &argv_owner = getArgV(options);
+  std::vector<const char *> argv;
   argv.reserve(argv_owner.size());
-  for (const auto& arg : argv_owner) {
+  for (const auto &arg : argv_owner) {
     argv.push_back(arg.c_str());
   }
-  cmd_str.insert(cmd_str.end(),
-                 argv.begin(),
-                 argv.end());
-  for (const auto& src_file : src) {
-   cmd_str.push_back(src_file.c_str());
+  cmd_str.insert(cmd_str.end(), argv.begin(), argv.end());
+  for (const auto &src_file : src) {
+    cmd_str.push_back(src_file.c_str());
   }
 
   // log the command line string used to create this task
-  for (const auto& arg : cmd_str) {
+  for (const auto &arg : cmd_str) {
     log_str = log_str + arg + " ";
   }
   Compiler::log_string(log_str);
@@ -155,11 +149,11 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
   NikiLauda.setCheckInputsExist(false);
   NikiLauda.CCPrintOptionsFilename = logFile.c_str();
   Compiler::lockMutex(logFile);
-  #ifdef VC_DEBUG
+#ifdef VC_DEBUG
   NikiLauda.CCPrintOptions = true;
-  #else
+#else
   NikiLauda.CCPrintOptions = false;
-  #endif
+#endif
 
   std::unique_ptr<driver::Compilation> C(NikiLauda.BuildCompilation(cmd_str));
   if (!C) {
@@ -168,7 +162,7 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
     return failureFileName;
   }
 
-  llvm::SmallVector<std::pair<int, const driver::Command*>,1> failCmd;
+  llvm::SmallVector<std::pair<int, const driver::Command *>, 1> failCmd;
   const auto res = NikiLauda.ExecuteCompilation(*C, failCmd);
   Compiler::unlockMutex(logFile);
 
@@ -176,8 +170,9 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
     return llvmIRfileName;
   }
   const std::string &error_str = "Unknown error:"
-                                " unable to generate bitcode file"
-                                " - Driver error code: " + std::to_string(res);
+                                 " unable to generate bitcode file"
+                                 " - Driver error code: " +
+                                 std::to_string(res);
   report_error(error_str);
   return failureFileName;
 }
@@ -205,12 +200,13 @@ std::filesystem::path ClangLibCompiler::generateIR(const std::vector<std::filesy
  *
  * This method only supports the legacy pass manager.
  */
-std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path &src_IR,
-                                           const std::string &versionID,
-                                           const opt_list_t options) const
-{
+std::filesystem::path
+ClangLibCompiler::runOptimizer(const std::filesystem::path &src_IR,
+                               const std::string &versionID,
+                               const opt_list_t options) const {
   // What we want to generate
-  const std::filesystem::path optBCfilename = Compiler::getOptBitcodeFileName(versionID);
+  const std::filesystem::path optBCfilename =
+      Compiler::getOptBitcodeFileName(versionID);
 
   // what we return when generateIR fails
   const std::filesystem::path failureFileName = "";
@@ -226,14 +222,15 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
   };
 
   llvm::LLVMContext optContext;
-  const std::vector<std::string>& argv_owner = getArgV(options);
+  const std::vector<std::string> &argv_owner = getArgV(options);
   const size_t argc = argv_owner.size() + 1; // opt <options>
-  std::vector<const char*> argv;
-  std::string log_str =std::filesystem::u8path(OPT_EXE_FULLPATH).c_str(); // "opt(-version) "...
-  log_str+=" ";
+  std::vector<const char *> argv;
+  std::string log_str =
+      std::filesystem::u8path(OPT_EXE_FULLPATH).c_str(); // "opt(-version) "...
+  log_str += " ";
   argv.reserve(argc);
   argv.push_back(std::move(std::filesystem::u8path(OPT_EXE_FULLPATH).c_str()));
-  for (const auto& arg : argv_owner) {
+  for (const auto &arg : argv_owner) {
     argv.push_back(arg.c_str());
     log_str = log_str + arg + " ";
   }
@@ -244,7 +241,7 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
 
   resetOptOptions();
   llvm::cl::ParseCommandLineOptions(argc,
-                                    const_cast<const char**>(argv.data()),
+                                    const_cast<const char **>(argv.data()),
                                     "ClangLibCompiler::runOptimizer");
 
   optContext.setDiscardValueNames(DiscardValueNames);
@@ -254,7 +251,8 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
 
   // load llvm::Module
   llvm::SMDiagnostic parsingInputErrorCode;
-  auto module = llvm::parseIRFile(src_IR.string(), parsingInputErrorCode, optContext);
+  auto module =
+      llvm::parseIRFile(src_IR.string(), parsingInputErrorCode, optContext);
   if (!module) {
     std::string parsing_error_str;
     llvm::raw_string_ostream s_ostream(parsing_error_str);
@@ -287,30 +285,32 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
   // retrieve module triple and prepare Target Machine object (may be empty)
   llvm::Triple moduleTriple(module->getTargetTriple());
   std::string optCPUStr, optFeaturesStr;
-  llvm::TargetMachine* optTMachine = nullptr;
-  const llvm::TargetOptions Options = llvm::codegen::InitTargetOptionsFromCodeGenFlags(moduleTriple);
-                                      // llvm static helper function
+  llvm::TargetMachine *optTMachine = nullptr;
+  const llvm::TargetOptions Options =
+      llvm::codegen::InitTargetOptionsFromCodeGenFlags(moduleTriple);
+  // llvm static helper function
   std::string lookupError;
   if (moduleTriple.getArch()) {
-    optCPUStr = llvm::codegen::getCPUStr();            // llvm static helper function
-    optFeaturesStr = llvm::codegen::getFeaturesStr();  // llvm static helper function
+    optCPUStr = llvm::codegen::getCPUStr(); // llvm static helper function
+    optFeaturesStr =
+        llvm::codegen::getFeaturesStr(); // llvm static helper function
   }
 
-  const llvm::Target *TheTarget = llvm::TargetRegistry::lookupTarget(llvm::codegen::getMArch(),
-                                                               moduleTriple,
-                                                               lookupError);
+  const llvm::Target *TheTarget = llvm::TargetRegistry::lookupTarget(
+      llvm::codegen::getMArch(), moduleTriple, lookupError);
   // Some modules don't specify a triple, and this is okay.
   if (!TheTarget) {
     optTMachine = nullptr;
   } else {
-    optTMachine = TheTarget->createTargetMachine(moduleTriple.getTriple(),
-                                                 optCPUStr,
-                                                 optFeaturesStr,
-                                                 Options,
-                                                 llvm::codegen::getRelocModel(),
-                                                 llvm::CodeModel::Small,// llvm::codegen::getCodeModel returns zero (casted to Tiny), which is wrong! Going with small which is the default model for majority of supported targets
-                                                 GetCodeGenOptLevel());
-    }
+    optTMachine = TheTarget->createTargetMachine(
+        moduleTriple.getTriple(), optCPUStr, optFeaturesStr, Options,
+        llvm::codegen::getRelocModel(),
+        llvm::CodeModel::Small, // llvm::codegen::getCodeModel returns zero
+                                // (casted to Tiny), which is wrong! Going with
+                                // small which is the default model for majority
+                                // of supported targets
+        GetCodeGenOptLevel());
+  }
 
   std::unique_ptr<llvm::TargetMachine> actualTM(optTMachine);
   // Override function attributes based on CPUStr, FeaturesStr,
@@ -338,19 +338,14 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
 
   // Add internal analysis passes from the target machine.
   Passes.add(llvm::createTargetTransformInfoWrapperPass(
-    (actualTM) ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
+      (actualTM) ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
 
   std::unique_ptr<llvm::legacy::FunctionPassManager> FPasses;
-  if (OptLevelO0 ||
-      OptLevelO1 ||
-      OptLevelO2 ||
-      OptLevelOs ||
-      OptLevelOz ||
-      OptLevelO3)
-  {
+  if (OptLevelO0 || OptLevelO1 || OptLevelO2 || OptLevelOs || OptLevelOz ||
+      OptLevelO3) {
     FPasses.reset(new llvm::legacy::FunctionPassManager(module.get()));
     FPasses->add(llvm::createTargetTransformInfoWrapperPass(
-      actualTM ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
+        actualTM ? actualTM->getTargetIRAnalysis() : llvm::TargetIRAnalysis()));
   }
 
   // Create a new optimization pass for each one specified on the command line
@@ -389,8 +384,7 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
     llvm::Pass *P = nullptr;
     if (PassInf->getNormalCtor()) {
       P = PassInf->getNormalCtor()();
-    }
-    else {
+    } else {
       report_error("Cannot create pass: " +
                    std::string(PassInf->getPassName()));
     }
@@ -440,9 +434,9 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
 
   std::error_code outFileCreationErrorCode;
   std::unique_ptr<llvm::ToolOutputFile> Out =
-    std::make_unique<llvm::ToolOutputFile>(optBCfilename.c_str(),
-                                          outFileCreationErrorCode,
-                                          llvm::sys::fs::OF_None);
+      std::make_unique<llvm::ToolOutputFile>(optBCfilename.c_str(),
+                                             outFileCreationErrorCode,
+                                             llvm::sys::fs::OF_None);
   if (!Out) {
     report_error("Could not create output file");
     return failureFileName;
@@ -471,27 +465,24 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
     }
     Passes.add(createPrintModulePass(*OS, "", PreserveAssemblyUseListOrder));
   } else if (OutputThinLTOBC) {
-    Passes.add(createWriteThinLTOBitcodePass(*OS)); 
+    Passes.add(createWriteThinLTOBitcodePass(*OS));
   } else {
-    Passes.add(createBitcodeWriterPass(*OS,
-                                       PreserveBitcodeUseListOrder,
-                                       EmitSummaryIndex,
-                                       EmitModuleHash));
+    Passes.add(createBitcodeWriterPass(*OS, PreserveBitcodeUseListOrder,
+                                       EmitSummaryIndex, EmitModuleHash));
   }
 
-  #ifdef VC_DEBUG
+#ifdef VC_DEBUG
   // Before executing passes, print the final values of the LLVM options.
   llvm::cl::PrintOptionValues();
-  #endif
-
+#endif
 
   // If requested, run all passes again with the same pass manager to catch
   // bugs caused by persistent state in the passes
   if (RunTwice) {
-      std::unique_ptr<llvm::Module> module2(llvm::CloneModule(*module));
-      Passes.run(*module2);
-      CompileTwiceBuffer = Buffer;
-      Buffer.clear();
+    std::unique_ptr<llvm::Module> module2(llvm::CloneModule(*module));
+    Passes.run(*module2);
+    CompileTwiceBuffer = Buffer;
+    Buffer.clear();
   }
 
   // Now that we have all of the passes ready, run them.
@@ -500,15 +491,14 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
   // Compare the two outputs and make sure they're the same
   if (RunTwice) {
     if (Buffer.size() != CompileTwiceBuffer.size() ||
-        (memcmp(Buffer.data(),
-                CompileTwiceBuffer.data(),
-                Buffer.size()) != 0)) {
+        (memcmp(Buffer.data(), CompileTwiceBuffer.data(), Buffer.size()) !=
+         0)) {
       // running twice the same passes generated diverging bitcode versions
       const std::string error_message =
-        "Running the pass manager twice changed the output.\n"
-        "Writing the result of the second run to the specified output.\n"
-        "To generate the one-run comparison binary, just run without\n"
-        "the compile-twice option\n";
+          "Running the pass manager twice changed the output.\n"
+          "Writing the result of the second run to the specified output.\n"
+          "To generate the one-run comparison binary, just run without\n"
+          "the compile-twice option\n";
       report_error(error_message);
       Out->os() << BOS->str();
       Out->keep();
@@ -538,13 +528,14 @@ std::filesystem::path ClangLibCompiler::runOptimizer(const std::filesystem::path
  * This implementation exploits the clang driver to handle all the stages of
  * the compilation and linking process.
  */
-std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::filesystem::path> &src,
-                                          const std::vector<std::string> &func,
-                                          const std::string &versionID,
-                                          const opt_list_t options)
-{
+std::filesystem::path
+ClangLibCompiler::generateBin(const std::vector<std::filesystem::path> &src,
+                              const std::vector<std::string> &func,
+                              const std::string &versionID,
+                              const opt_list_t options) {
   // What we want to generate
-  const std::filesystem::path libFileName = Compiler::getSharedObjectFileName(versionID);
+  const std::filesystem::path libFileName =
+      Compiler::getSharedObjectFileName(versionID);
   // what we return when generateIR fails
   const std::filesystem::path failureFileName = "";
   std::string log_str = "";
@@ -559,7 +550,8 @@ std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::files
     return;
   };
 
-  // clang++ <options> -fpic -shared src -olibFileName -Wno-return-type-c-linkage
+  // clang++ <options> -fpic -shared src -olibFileName
+  // -Wno-return-type-c-linkage
   std::vector<const char *> cmd_str;
   cmd_str.reserve(options.size() + 6);
   cmd_str.push_back(std::move("clang++"));
@@ -570,21 +562,19 @@ std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::files
   cmd_str.push_back(std::move(outputArgument).c_str());
 
   // create a local copy of option strings
-  const auto& argv_owner = getArgV(options);
-  std::vector<const char*> argv;
+  const auto &argv_owner = getArgV(options);
+  std::vector<const char *> argv;
   argv.reserve(argv_owner.size());
-  for (const auto& arg : argv_owner) {
+  for (const auto &arg : argv_owner) {
     argv.push_back(arg.c_str());
   }
-  cmd_str.insert(cmd_str.end(),
-                 argv.begin(),
-                 argv.end());
-  for (const auto& src_file : src) {
+  cmd_str.insert(cmd_str.end(), argv.begin(), argv.end());
+  for (const auto &src_file : src) {
     cmd_str.push_back(src_file.c_str());
   }
 
   // log the command line string used to create this task
-  for (const auto& arg : cmd_str) {
+  for (const auto &arg : cmd_str) {
     log_str = log_str + arg + " ";
   }
   Compiler::log_string(log_str);
@@ -595,11 +585,11 @@ std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::files
   NikiLauda.setTitle("clang as a library");
   NikiLauda.setCheckInputsExist(false);
   NikiLauda.CCPrintOptionsFilename = logFile.c_str();
-  #ifdef VC_DEBUG
+#ifdef VC_DEBUG
   NikiLauda.CCPrintOptions = true;
-  #else
+#else
   NikiLauda.CCPrintOptions = false;
-  #endif
+#endif
 
   std::unique_ptr<driver::Compilation> C(NikiLauda.BuildCompilation(cmd_str));
   if (!C) {
@@ -607,15 +597,16 @@ std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::files
     return failureFileName;
   }
 
-  llvm::SmallVector<std::pair<int, const driver::Command*>,1> failCmd;
+  llvm::SmallVector<std::pair<int, const driver::Command *>, 1> failCmd;
   const auto res = NikiLauda.ExecuteCompilation(*C, failCmd);
 
   if (exists(libFileName)) {
     return libFileName;
   }
   const std::string &error_str = "Unknown error:"
-                                " unable to generate shared object"
-                                " - Driver error code: " + std::to_string(res);
+                                 " unable to generate shared object"
+                                 " - Driver error code: " +
+                                 std::to_string(res);
   report_error(error_str);
   return failureFileName;
 }
@@ -623,21 +614,16 @@ std::filesystem::path ClangLibCompiler::generateBin(const std::vector<std::files
 // ---------------------------------------------------------------------------
 // ------------------------------ hasOptimizer ------------------------------
 // ---------------------------------------------------------------------------
-bool ClangLibCompiler::hasOptimizer() const
-{
-  return true;
-}
+bool ClangLibCompiler::hasOptimizer() const { return true; }
 
 // ---------------------------------------------------------------------------
 // ----------------------------- getOptionString -----------------------------
 // ---------------------------------------------------------------------------
-inline std::string ClangLibCompiler::getOptionString(const Option &o) const
-{
+inline std::string ClangLibCompiler::getOptionString(const Option &o) const {
   // remove single and double quotes
   std::string tmp_val = o.getValue();
   if (tmp_val.length() > 1 &&
-      (tmp_val[0] == '\"' && tmp_val[tmp_val.length() - 1] == '\"'))
-  {
+      (tmp_val[0] == '\"' && tmp_val[tmp_val.length() - 1] == '\"')) {
     tmp_val = tmp_val.substr(1, tmp_val.length() - 2);
   }
   return o.getPrefix() + tmp_val;
@@ -646,12 +632,11 @@ inline std::string ClangLibCompiler::getOptionString(const Option &o) const
 // ---------------------------------------------------------------------------
 // --------------------------------- getArgV ---------------------------------
 // ---------------------------------------------------------------------------
-inline std::vector<std::string> ClangLibCompiler::getArgV(
-                                const opt_list_t optionList) const
-{
+inline std::vector<std::string>
+ClangLibCompiler::getArgV(const opt_list_t optionList) const {
   std::vector<std::string> v;
   v.reserve(optionList.size());
-  for (const auto& o : optionList) {
+  for (const auto &o : optionList) {
     v.push_back(getOptionString(o));
   }
   return v;
