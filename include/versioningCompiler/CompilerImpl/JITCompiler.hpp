@@ -33,6 +33,7 @@
 #include "versioningCompiler/Compiler.hpp"
 #include "versioningCompiler/CompilerImpl/ClangLLVM/FileLogDiagnosticConsumer.hpp"
 #include "versioningCompiler/CompilerImpl/ClangLLVM/LLVMInstanceManager.hpp"
+
 #include "clang/Basic/DiagnosticIDs.h"
 #include "clang/Basic/DiagnosticOptions.h"
 #include "clang/Frontend/CompilerInstance.h"
@@ -84,7 +85,7 @@ private:
 public:
   // Set of maps used to keep a state of the various versions requesting for JIT
   // functionalities.
-  std::map<std::string, std::string>
+  std::map<std::string, std::unique_ptr<llvm::Module>>
       _modules_map; // source string gets placed here rather than the module. If
                     // it is present, generate the module
   std::map<std::string, llvm::orc::ResourceTrackerSP> _resource_tracker_map;
@@ -100,7 +101,23 @@ public:
               const std::filesystem::path &libWorkingDir,
               const std::filesystem::path &log);
 
-  inline ~JITCompiler() {}
+  inline ~JITCompiler() {
+    for (auto it = _resource_tracker_map.begin();
+         it != _resource_tracker_map.end(); ++it) {
+      handleAllErrors(
+          std::move(it->second->remove()), [&](llvm::ErrorInfoBase &EIB) {
+            llvm::errs() << "Error while deleting a resource tracker: "
+                         << EIB.message() << "\n";
+          });
+    }
+#if LLVM_VERSION_MAJOR >= 14
+    handleAllErrors(std::move(this->_ES->removeJITDylib(this->_mainJD)),
+                    [&](llvm::ErrorInfoBase &EIB) {
+                      llvm::errs() << "Error while removing the JITDylib: "
+                                   << EIB.message() << "\n";
+                    });
+#endif
+  }
 
   bool hasOptimizer() const override;
 

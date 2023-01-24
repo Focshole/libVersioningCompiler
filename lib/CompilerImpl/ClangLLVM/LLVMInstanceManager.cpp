@@ -22,6 +22,7 @@
  * along with libVersioningCompiler. If not, see <http://www.gnu.org/licenses/>
  */
 #include "versioningCompiler/CompilerImpl/ClangLLVM/LLVMInstanceManager.hpp"
+
 #ifndef CLANG_EXE_FULLPATH
 #define CLANG_EXE_FULLPATH "/usr/bin/clang"
 #endif
