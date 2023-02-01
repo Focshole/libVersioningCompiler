@@ -22,9 +22,10 @@ libVersioningCompiler requires:
 - libuuid
 - (OPTIONAL) LLVM 13 or greater (tested up to LLVM 15)
 - (OPTIONAL) libclang-13-dev or greater (tested up to libclang-15-dev)
+- (OPTIONAL) libtool for libtool dlopen
 
 Compiling without the OPTIONAL dependencies will disable some features,
-like the Clang-as-a-library compiler implementation.
+like the Clang-as-a-library compiler implementation and the libtool compilers.
 
 ## How to install the dependencies
 
@@ -62,10 +63,16 @@ Eventually, update the preferred clang and llvm version:
 [optional][sudo] update-alternatives --install /usr/bin/opt opt /usr/bin/opt-${LLVM_V} 100
 ```
 
+To install libtool on Ubuntu:
+
+```bash
+[optional][sudo] apt-get install --yes libltdl-dev libtool
+```
+
 ### Archlinux
 
 ```bash
-sudo pacman -S cmake llvm zlib [clang]
+sudo pacman -S cmake llvm zlib [clang] [libtool]
 ```
 
 uuid should not be required to be installed from AUR.
@@ -75,8 +82,9 @@ uuid should not be required to be installed from AUR.
 Install [homebrew](https://brew.sh), then:
 
 ```bash
-brew install cmake ossp-uuid zlib [llvm]
+brew install cmake ossp-uuid zlib [llvm] [glibtool]
 ```
+The libtool implementation would require some rework to work on MacOS
 
 ## How to install libVersioningCompiler
 
@@ -84,7 +92,7 @@ If you want to install libVersioningCompiler, install the dependencies, then, as
 
 ```
 cd ${LIBVC_ROOT}
-cmake -S . -Bbuild [-DCMAKE_INSTALL_PREFIX="/path/to/your/custom/install/folder/"] [-G "make/Ninja/whatever generator"]
+cmake -S . -Bbuild [-DCMAKE_INSTALL_PREFIX="/path/to/your/custom/install/folder/"] [-DUSE_LIBTOOL=1] [-G "make/Ninja/whatever generator"]
 cmake --build build
 ./build/libVC_testUtils &&./build/libVC_test &&./build/libVC_testJit
 [sudo] cmake --build build --target install
@@ -119,7 +127,7 @@ If you want to build libVersioningCompiler using verbose flags and a custom comp
 
 ```bash
 cd libVersioningCompiler
-CXX="/opt/clang-14/bin/clang" cmake -D CMAKE_VERBOSE_MAKEFILE=1 -D LIBCLANG_FIND_VERBOSE=1 -D LLVM_FIND_VERBOSE=1 -D LLVM_FIND_VERBOSE=1 -S . -B build
+CXX="/opt/clang-14/bin/clang" cmake -D CMAKE_VERBOSE_MAKEFILE=1 -D LIBCLANG_FIND_VERBOSE=1 -D LLVM_FIND_VERBOSE=1 -D LLVM_FIND_VERBOSE=1 [-DUSE_LIBTOOL=1] -S . -B build
 cmake --build build -v
 ```
 
@@ -133,6 +141,9 @@ cmake  \
 -D LLVM_TOOLS_BINARY_DIR="/opt/x86_64-linux-gnu-llvm-static/bin" \
 -D LLVM_VERSION_MAJOR=15 \
 -D LLVM_PACKAGE_VERSION="15.0.6" \
+[-DUSE_LIBTOOL=1] \
+[-D Libtool_INCLUDE_DIR="/usr/include" ]\
+[-D Libtool_LIBRARY="/usr/lib/libltdl.so"] \
  -S . -B build
 cmake --build build
 ```
@@ -144,6 +155,9 @@ Explanation:
 - `LLVM_INCLUDE_DIR` specifies where to find llvm headers
 - `LLVM_TOOLS_BINARY_DIR` specifies where to find llvm binaries (llvm-config, opt etc)
 - `LLVM_VERSION_MAJOR` and `LLVM_PACKAGE_VERSION` must be specified because FindLLVM.cmake is (usually) not included into llvm static builds
+- `USE_LIBTOOL=1` means to build libtool compilers implementation and tests
+- `Libtool_INCLUDE_DIR` can be used to override the cmake libtool headers directory
+- `Libtool_LIBRARY` can be used to override the cmake libtool library path
 
 Libclang will be found too after defining those variables.
 
@@ -161,6 +175,9 @@ cmake  \
 -D LLVM_VERSION_MAJOR=15 \ # Update this if required
 -D LLVM_SHARED_MODE="static" \
 -D LLVM_PACKAGE_VERSION="15.0.7" \ # Update this accordingly to /opt/homebrew/opt/llvm/bin/llvm-config --version
+[-DUSE_LIBTOOL=1] \
+[-D Libtool_INCLUDE_DIR="/opt/homebrew/usr/include" ]\
+[-D Libtool_LIBRARY="/opt/homebrew/usr/lib/libltdl.so"] \
  -S . -B build
 
  cmake --build build -v

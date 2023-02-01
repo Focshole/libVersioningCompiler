@@ -1,5 +1,5 @@
 # Copyright 2017 Politecnico di Milano.
-# Developed by : Stefano Cherubin, Davide Gadioli
+# Developed by:  Stefano Cherubin, Davide Gadioli
 #                PhD student, Politecnico di Milano
 #                <first_name>.<family_name>@polimi.it
 #
@@ -49,7 +49,7 @@ if(NOT APPLE AND NOT CMAKE_DL_LIBS)
   message(FATAL_ERROR "Missing DL libs!")
 endif(NOT APPLE AND NOT CMAKE_DL_LIBS)
 
-# The uuuid library
+# The uuid library
 find_package(UUID REQUIRED)
 include_directories(${UUID_INCLUDE_DIR})
 link_directories(${UUID_LIBRARY})
@@ -67,6 +67,33 @@ if(LLVM_FOUND)
   include_directories(${LLVM_INCLUDE_DIR})
   link_directories(${LLVM_LIBRARY_DIR})
 endif(LLVM_FOUND)
+# Libtool
+if(USE_LIBTOOL)
+  if(NOT Libtool_INCLUDE_DIR)
+    find_path(
+      Libtool_INCLUDE_DIR ltdl.h
+      PATHS /usr/include /usr/local/include /opt/local/include
+            /opt/homebrew/usr/include
+      NO_DEFAULT_PATH)
+  endif(NOT Libtool_INCLUDE_DIR)
+
+  if(NOT Libtool_LIBRARY)
+    find_library(
+      Libtool_LIBRARY
+      NAMES ltdl
+      PATHS /usr/lib /usr/local/lib /sw/lib /opt/local/lib /opt/homebrew/usr/lib
+      NO_DEFAULT_PATH)
+  endif(NOT Libtool_LIBRARY)
+  if(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+    message(STATUS "Libtool found: ${Libtool_INCLUDE_DIR} ${Libtool_LIBRARY}")
+  else(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+    message(
+      FATAL_ERROR "Libtool not found: ${Libtool_INCLUDE_DIR} ${Libtool_LIBRARY}"
+    )
+  endif(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+  link_directories(${Libtool_LIBRARY})
+  set(VC_LIB_DEPS ${VC_LIB_DEPS} ${Libtool_LIBRARY})
+endif(USE_LIBTOOL)
 
 set(LLVM_VERSION_MIN_REQUIRED "13.0.0")
 
@@ -89,13 +116,11 @@ Minimum required is ${LLVM_VERSION_MIN_REQUIRED}")
   message(WARNING "Clang-as-a-library will be disabled")
 endif()
 
-set(VC_LIB_DEPS ${CMAKE_DL_LIBS} ${UUID_LIBRARY})
+set(VC_LIB_DEPS ${VC_LIB_DEPS} ${CMAKE_DL_LIBS} ${UUID_LIBRARY})
 
 if(ENABLE_CLANG_AS_LIB)
   set(VC_LIB_DEPS ${VC_LIB_DEPS} ${LIBCLANG_LIBRARIES} ${LLVM_MODULE_LIBFILES}
                   ${LLVM_SYSTEM})
-
-  set(VC_DEPS_EXTRA_LINK_FLAGS "${LLVM_LFLAGS}")
 endif(ENABLE_CLANG_AS_LIB)
 
 list(REMOVE_DUPLICATES VC_LIB_DEPS)
@@ -117,7 +142,7 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # CMAKE_INTERPROCEDURAL_OPTIMIZATION applies different optimizations depending on the compiler.
-# It breaks cross compiler compatibility (e.g. library compiled with g++ which is being used with clang later on), so
+# It breaks cross-compiler compatibility (e.g. library compiled with g++ which is being used with clang later on), so
 # I'm not enabling link time optimization by default.
 set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 
@@ -149,7 +174,7 @@ set(VC_LIB_HDR2
     ${VC_LIB_HDR_PREFIX2}/SystemCompilerOptimizer.hpp
     ${VC_LIB_HDR_PREFIX2}/TAFFOCompiler.hpp)
 
-#----- Additionl files to enable Clang-as-a-library
+#----- Additional files to enable Clang-as-a-library
 if(ENABLE_CLANG_AS_LIB)
   set(COMPILE_DEFINITIONS "ENABLE_CLANG_AS_LIB=true")
 
@@ -173,7 +198,21 @@ if(ENABLE_CLANG_AS_LIB)
       ${VC_LIB_HDR_PREFIX3}/LLVMInstanceManager.hpp)
 endif(ENABLE_CLANG_AS_LIB)
 
-set(VC_LIB_HDR ${VC_LIB_HDR1} ${VC_LIB_HDR2} ${VC_LIB_HDR3})
+#----- Additional files to use libtool versions
+
+if(USE_LIBTOOL)
+  set(VC_LIB_SRC
+      ${VC_LIB_SRC} ${SRC_PREFIX}/CompilerImpl/LibToolSystemCompiler.cpp
+      ${SRC_PREFIX}/CompilerImpl/LibToolSystemCompilerOptimizer.cpp)
+  set(VC_LIB_HDR_PREFIX4
+      ${CMAKE_CURRENT_SOURCE_DIR}/include/versioningCompiler/CompilerImpl/)
+  set(VC_LIB_HDR4 ${VC_LIB_HDR_PREFIX4}/LibToolSystemCompiler.hpp
+                  ${VC_LIB_HDR_PREFIX4}/LibToolSystemCompilerOptimizer.hpp)
+endif(USE_LIBTOOL)
+
+#----- Merge all headers
+
+set(VC_LIB_HDR ${VC_LIB_HDR1} ${VC_LIB_HDR2} ${VC_LIB_HDR3} ${VC_LIB_HDR4})
 
 #----- setup library
 
@@ -212,6 +251,10 @@ if(ENABLE_CLANG_AS_LIB)
   install(FILES ${VC_LIB_HDR3}
           DESTINATION include/versioningCompiler/CompilerImpl/ClangLLVM)
 endif(ENABLE_CLANG_AS_LIB)
+if(USE_LIBTOOL)
+  install(FILES ${VC_LIB_HDR4}
+          DESTINATION include/versioningCompiler/CompilerImpl)
+endif(USE_LIBTOOL)
 
 #############################################
 #             TEST APP                      #
@@ -291,7 +334,31 @@ endif(ENABLE_CLANG_AS_LIB)
 if(CMAKE_BUILD_TYPE MATCHES DEBUG)
   target_compile_definitions(${VC_EXEUTILS_NAME} PRIVATE -DVC_DEBUG)
 endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
+# testLibtool.cpp
+#----- Sources
+if(USE_LIBTOOL)
+  set(VC_TEST_LIBTOOL_APP_SRC TestLibtool.cpp)
+  set(VC_LIBTOOL_EXE_NAME libVC_testLibtool)
+  add_executable(${VC_LIBTOOL_EXE_NAME} ${VC_TEST_LIBTOOL_APP_SRC})
 
+  target_link_libraries(${VC_LIBTOOL_EXE_NAME} ${VC_LIB_NAME} ${VC_LIB_DEPS}
+                        ${CPP_LIBRARY})
+  set(TEST_CODE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/test_code")
+  convert_to_native_normalized_path(${TEST_CODE_PATH})
+  target_compile_definitions(${VC_LIBTOOL_EXE_NAME}
+                             PRIVATE -DFORCED_PATH_TO_TEST="${TEST_CODE_PATH}")
+  target_compile_definitions(
+    ${VC_LIBTOOL_EXE_NAME}
+    PRIVATE -DLLVM_TOOLS_BINARY_DIR="${LLVM_TOOLS_BINARY_DIR}")
+
+  if(ENABLE_CLANG_AS_LIB)
+    target_compile_definitions(${VC_LIBTOOL_EXE_NAME}
+                               PRIVATE -DHAVE_CLANG_AS_LIB)
+  endif(ENABLE_CLANG_AS_LIB)
+  if(CMAKE_BUILD_TYPE MATCHES DEBUG)
+    target_compile_definitions(${VC_LIBTOOL_EXE_NAME} PRIVATE -DVC_DEBUG)
+  endif(CMAKE_BUILD_TYPE MATCHES DEBUG)
+endif(USE_LIBTOOL)
 #############################################
 #            INSTALL TEST BIN               #
 #############################################

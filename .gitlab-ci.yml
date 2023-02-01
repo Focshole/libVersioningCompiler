@@ -19,7 +19,45 @@ stages:
   - apt-get install --quiet --yes build-essential cmake libz-dev uuid-dev
   - cmake --version
 
+# Test libtool with ubuntu jammy with its default llvm & clang - clang compiler as default
+build-libtool-llvm14-jammy-clang-default:
+  stage: build
+  image: ubuntu:jammy
+  variables:
+    CLANG_VN: "14"
+    CXX: "clang++-14"
+  before_script:
+    - *setup_script_jammy
+    - apt-get install clang-$CLANG_VN clang-tools-$CLANG_VN lld-$CLANG_VN llvm-$CLANG_VN-dev libclang-$CLANG_VN-dev libltdl-dev libtool --yes
+  script:
+    - mkdir build && cmake -D LLVM_FIND_VERBOSE=1 -D LIBCLANG_FIND_VERBOSE=1 -D CMAKE_VERBOSE_MAKEFILE=1 -D USE_LIBTOOL=1 -S . -B build && cmake --build build -v
+  cache:
+    key: $CI_COMMIT_SHA-llvm$CLANG_VN-jammy-clang-default-cache
+    policy: push
+    paths:
+      - build
+  artifacts:
+    paths:
+      - build
+    expire_in: 1 month
 
+test-libtool-llvm14-jammy-clang-default:
+  stage: test
+  image: ubuntu:jammy
+  needs: [build-libtool-llvm14-jammy-clang-default]
+  variables:
+    CLANG_VN: "14"
+    CXX: "clang++-14"
+  cache:
+      key: $CI_COMMIT_SHA-llvm$CLANG_VN-jammy-clang-default-cache
+      policy: pull
+      paths:
+        - build
+  before_script:
+    - *setup_script_jammy
+    - apt-get install clang-$CLANG_VN clang-tools-$CLANG_VN lld-$CLANG_VN llvm-$CLANG_VN-dev libclang-$CLANG_VN-dev libltdl-dev libtool --yes
+  script:
+    - cd build && chmod +x libVC_test libVC_testUtils libVC_testJit libVC_testLibtool && ./libVC_testUtils && ./libVC_test && ./libVC_testJit && ./libVC_testLibtool
 # Test with ubuntu jammy with its default llvm & clang - clang compiler as default
 build-llvm14-jammy-clang-default:
   stage: build

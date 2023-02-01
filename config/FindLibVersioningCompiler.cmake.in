@@ -398,6 +398,32 @@ endif(NOT UUID_LIBRARY)
 
 get_filename_component(UUID_LIBRARY_DIR ${UUID_LIBRARY} PATH)
 
+# Libtool
+if(USE_LIBTOOL)
+  if(NOT Libtool_INCLUDE_DIR)
+    find_path(
+      Libtool_INCLUDE_DIR ltdl.h
+      PATHS /usr/include /usr/local/include /opt/local/include
+            /opt/homebrew/usr/include
+      NO_DEFAULT_PATH)
+  endif(NOT Libtool_INCLUDE_DIR)
+
+  if(NOT Libtool_LIBRARY)
+    find_library(
+      Libtool_LIBRARY
+      NAMES ltdl
+      PATHS /usr/lib /usr/local/lib /sw/lib /opt/local/lib /opt/homebrew/usr/lib
+      NO_DEFAULT_PATH)
+  endif(NOT Libtool_LIBRARY)
+  if(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+    message(STATUS "Libtool found: ${Libtool_INCLUDE_DIR} ${Libtool_LIBRARY}")
+  else(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+    message(
+      FATAL_ERROR "Libtool not found: ${Libtool_INCLUDE_DIR} ${Libtool_LIBRARY}"
+    )
+  endif(Libtool_INCLUDE_DIR AND Libtool_LIBRARY)
+endif(USE_LIBTOOL)
+
 # -----------------------------------------------------------------------------
 # check for the libVersioningCompiler library
 find_library(
@@ -419,6 +445,9 @@ if(ENABLE_CLANG_AS_LIB)
       ${LIBVC_LIBRARIES} ${LIBCLANG_LIBRARIES} ${LLVM_MODULE_LIBS}
       ${LLVM_MODULE_LIBFILES} ${LLVM_SYSTEM})
 endif(ENABLE_CLANG_AS_LIB)
+if(USE_LIBTOOL)
+  set(LIBVC_LIBRARIES ${LIBVC_LIBRARIES} ${Libtool_LIBRARY})
+endif(USE_LIBTOOL)
 
 list(REMOVE_DUPLICATES LIVC_LIB_DIR)
 
